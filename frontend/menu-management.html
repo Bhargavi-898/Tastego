@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Restaurant Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
+    .container { width: 500px; margin: 20px auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    h3 { text-align: center; margin-bottom: 20px; }
+    .input, .button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
+    .button { background-color: #d32f2f; color: white; cursor: pointer; }
+    .button:hover { background-color: #9a0007; }
+    .menu-item { display: flex; gap: 10px; margin: 10px 0; }
+    .remove-button { background: #d32f2f; color: white; border: none; padding: 0 10px; cursor: pointer; border-radius: 5px; }
+    .remove-button:hover { background-color: #9a0007; }
+    .image-preview { margin-top: 10px; text-align: center; }
+    .image-preview img { max-width: 100%; border-radius: 5px; }
+  </style>
+</head>
+<body>
+
+  <!-- Menu Upload Section -->
+  <div class="container">
+    <h3>Upload Menu Items</h3>
+    <form id="menuForm">
+      <div id="menuItemsContainer"></div>
+      <button type="button" class="button" onclick="addMenuItem()">Add Menu Item</button>
+      <button type="button" class="button" onclick="saveMenu()">Save Menu</button>
+    </form>
+  </div>
+
+  <!-- UPI Scanner Section -->
+  <div class="container">
+    <h3>Upload UPI Screenshot</h3>
+    <input type="file" class="input" id="upiScannerInput" accept="image/*" onchange="previewUPIImage()" />
+    <div class="image-preview" id="upiScannerPreview"></div>
+    <button type="button" class="button" onclick="saveUPIScanner()">Upload UPI Screenshot</button>
+  </div>
+
+  <script>
+    // ====== Menu Section ======
+    function addMenuItem(name='', price='') {
+      const container = document.getElementById('menuItemsContainer');
+      const div = document.createElement('div');
+      div.className = 'menu-item';
+      div.innerHTML = `
+        <input type="text" class="input menu-item-name" placeholder="Menu Item Name" value="${name}" required />
+        <input type="number" class="input menu-item-price" placeholder="Price" value="${price}" required />
+        <button type="button" class="remove-button" onclick="removeMenuItem(this)">X</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeMenuItem(button) {
+      button.parentElement.remove();
+    }
+async function loadPreviousMenu(restaurantName) {
+    try {
+        const res = await fetch(`http://localhost:8081/api/admin/restaurant/menu?restaurantName=${restaurantName}`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.menuItems && data.menuItems.length > 0) {
+                renderMenu(data.menuItems); // renderMenu can now take an array
+                alert("Previous menu loaded. You can modify it.");
+            }
+        }
+    } catch (err) {
+        console.error("Error fetching previous menu:", err);
+    }
+}
+
+function renderMenu(menuItems) {
+    const menuDiv = document.getElementById("menu");
+    menuDiv.innerHTML = menuItems.map((item, index) => `
+        <div class="menu-item">
+            <input type="text" value="${item.name}" onchange="menuItems[${index}].name=this.value" />
+            <input type="number" value="${item.price}" onchange="menuItems[${index}].price=parseFloat(this.value)" />
+            <button onclick="removeMenuItem(${index})">Remove</button>
+        </div>
+    `).join('');
+}
+
+function removeMenuItem(index) {
+    menuItems.splice(index, 1);
+    renderMenu(menuItems);
+}
+
+    async function saveMenu() {
+      const names = document.querySelectorAll('.menu-item-name');
+      const prices = document.querySelectorAll('.menu-item-price');
+      const menu = [];
+
+      names.forEach((input, i) => {
+        const name = input.value.trim();
+        const price = parseFloat(prices[i].value.trim());
+        if (name && !isNaN(price)) menu.push({ name, price });
+      });
+
+      if (!menu.length) { alert("Add at least one menu item."); return; }
+
+      const restaurant = prompt("Enter your restaurant name:");
+      if (!restaurant) return;
+
+      const formData = new FormData();
+      formData.append("restaurantName", restaurant);
+      formData.append("menuItems", JSON.stringify(menu));
+
+      try {
+        const res = await fetch("http://localhost:8081/api/menu/upload", {
+          method: "POST",
+          body: formData
+        });
+        if (res.ok) alert("Menu saved successfully.");
+        else alert("Error saving menu: " + await res.text());
+      } catch (err) {
+        alert("Network error: " + err.message);
+      }
+    }
+
+    // ====== UPI Scanner Section ======
+    function previewUPIImage() {
+      const input = document.getElementById('upiScannerInput');
+      const preview = document.getElementById('upiScannerPreview');
+      preview.innerHTML = '';
+
+      if (input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = document.createElement('img');
+          img.src = e.target.result;
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    async function saveUPIScanner() {
+      const input = document.getElementById('upiScannerInput');
+      const file = input.files[0];
+      if (!file) { alert('Please select a file.'); return; }
+
+      const restaurantName = prompt("Enter your restaurant name:");
+      if (!restaurantName) return;
+
+      const formData = new FormData();
+      formData.append('restaurantName', restaurantName); // only restaurant name
+      formData.append('upiScreenshot', file);            // the file
+
+      try {
+        const res = await fetch('http://localhost:8081/api/scanner/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (res.ok) {
+          alert('UPI Screenshot uploaded successfully.');
+          input.value = '';
+          document.getElementById('upiScannerPreview').innerHTML = '';
+        } else {
+          const error = await res.text();
+          alert('Failed: ' + error);
+        }
+      } catch (e) {
+        alert('Upload error: ' + e.message);
+      }
+    }
+  </script>
+
+</body>
+</html>

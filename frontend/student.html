@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dashboard</title>
+<style>
+body { font-family: Arial; background:#f8f9fa; padding:20px;}
+.container { max-width:500px; margin:20px auto; background:white; padding:20px; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+h3,h4 { text-align:center; margin-bottom:20px; }
+.menu-item, .cart-item { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #ddd;}
+button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer;}
+.add-button { background:#ff3333; color:white;}
+.add-button:hover { background:#cc0000;}
+.remove-button { background:#ff6666; color:white;}
+.pay-button { background:#28a745; color:white; width:100%; margin-top:10px;}
+.pay-button:hover { background:#218838;}
+.summary { text-align:right; font-weight:bold; margin-top:10px;}
+.hidden { display:none;}
+img { width:100%; max-width:300px; display:block; margin:10px auto;}
+.instructions { color:#d9534f; text-align:center; font-weight:bold;}
+.token-display { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#333;}
+#dynamic-token { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#28a745;}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h3 id="restaurant-title">Menu</h3>
+  <div id="menu"></div>
+</div>
+
+<!-- Cart -->
+<div class="container hidden" id="cart-container">
+  <h4>Your Cart</h4>
+  <div id="cart"></div>
+  <div class="summary" id="total">Total: ₹0.00</div>
+  <button class="pay-button" onclick="showUPIScanner()">Proceed to Payment</button>
+</div>
+
+<!-- UPI Payment -->
+<div class="container hidden" id="upi-scanner">
+  <h4>Scan to Pay</h4>
+  <img id="scannerImageDynamic" src="" alt="UPI Scanner" />
+  <p class="instructions">Please complete the payment and upload the screenshot in the next step.</p>
+  <button class="pay-button" onclick="showUploadSection()">I Have Paid</button>
+</div>
+
+<!-- Upload Screenshot -->
+<div class="container hidden" id="upload-section">
+  <h4>Upload Payment Screenshot</h4>
+  <input type="file" id="paymentScreenshot" accept="image/*">
+  <button class="pay-button" onclick="verifyPayment()">Submit Screenshot</button>
+</div>
+
+<!-- Dynamic Token Display -->
+<div id="dynamic-token" class="hidden"></div>
+
+<script>
+let menu = [];
+let cart = [];
+let restaurant = '';
+const tokens = new Set();
+
+// Load restaurant menu
+async function loadRestaurantData() {
+  restaurant = prompt("Enter restaurant name:");
+  if(!restaurant) return;
+
+  document.getElementById("restaurant-title").textContent = `Menu - ${restaurant}`;
+
+  try {
+    const menuRes = await fetch(`http://localhost:8081/api/menu/${restaurant}`);
+    const menuData = await menuRes.json();
+    menu = menuData.menuItems || [];
+    renderMenu();
+  } catch(err){
+    alert("Error loading menu: " + err.message);
+    console.error(err);
+  }
+}
+
+function renderMenu() {
+  const menuDiv = document.getElementById("menu");
+  menuDiv.innerHTML = menu.map((item,index)=>`
+    <div class="menu-item">
+      <span>${item.name} - ₹${item.price}</span>
+      <button class="add-button" onclick="addToCart(${index})">Add</button>
+    </div>
+  `).join('');
+}
+
+function addToCart(index){
+  cart.push(menu[index]);
+  renderCart();
+}
+
+function removeFromCart(index){
+  cart.splice(index,1);
+  renderCart();
+}
+
+function renderCart(){
+  const cartContainer = document.getElementById("cart-container");
+  const cartDiv = document.getElementById("cart");
+  const totalDiv = document.getElementById("total");
+
+  if(cart.length===0){ cartContainer.classList.add("hidden"); return; }
+
+  cartContainer.classList.remove("hidden");
+  cartDiv.innerHTML = cart.map((item,index)=>`
+    <div class="cart-item">
+      <span>${item.name} - ₹${item.price}</span>
+      <button class="remove-button" onclick="removeFromCart(${index})">Remove</button>
+    </div>
+  `).join('');
+
+  const total = cart.reduce((sum,item)=>sum+item.price,0);
+  totalDiv.textContent = `Total: ₹${total.toFixed(2)}`;
+}
+
+// Show UPI scanner dynamically
+async function showUPIScanner(){
+  document.getElementById("cart-container").classList.add("hidden");
+  document.getElementById("upi-scanner").classList.remove("hidden");
+
+  try {
+    const scannerRes = await fetch(`http://localhost:8081/api/scanner/base64/${restaurant}`);
+    if(scannerRes.ok){
+      const scannerData = await scannerRes.json();
+      if(scannerData.base64){
+        document.getElementById("scannerImageDynamic").src = `data:image/png;base64,${scannerData.base64}`;
+      } else {
+        document.getElementById("scannerImageDynamic").alt = "No scanner available";
+      }
+    } else {
+      document.getElementById("scannerImageDynamic").alt = "Failed to fetch scanner";
+    }
+  } catch(err){
+    console.error("Error fetching scanner:", err);
+    document.getElementById("scannerImageDynamic").alt = "Error loading scanner";
+  }
+}
+
+function showUploadSection(){
+  document.getElementById("upi-scanner").classList.add("hidden");
+  document.getElementById("upload-section").classList.remove("hidden");
+}
+
+function verifyPayment(){
+  const screenshot = document.getElementById("paymentScreenshot").files[0];
+  if(!screenshot){ alert("Please upload a screenshot."); return; }
+
+  setTimeout(()=>{
+    const token = generateUniqueToken();
+    const tokenDiv = document.getElementById("dynamic-token");
+    tokenDiv.textContent = `Payment Verified! Your Token Number: ${token}`;
+    tokenDiv.classList.remove("hidden");
+
+    document.getElementById("upload-section").classList.add("hidden");
+    cart=[];
+    renderCart();
+  },2000);
+}
+
+function generateUniqueToken(){
+  let token;
+  do{ token = Math.floor(Math.random()*10000)+1; } while(tokens.has(token));
+  tokens.add(token);
+  return token;
+}
+
+window.onload = loadRestaurantData;
+</script>
+</body>
+</html>

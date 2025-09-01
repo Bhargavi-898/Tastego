@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - TASTE GO</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ff4d4d;
+    }
+
+    .admin-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .admin-container h3 {
+      color: #333;
+    }
+
+    .admin-container input,
+    .admin-container button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+
+    .admin-container button {
+      background-color: #ff4d4d;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .admin-container button:hover {
+      background-color: #cc0000;
+    }
+
+    #codeDisplay,
+    #dateDisplay {
+      font-weight: bold;
+      color: #333;
+      padding-top: 10px;
+    }
+
+    .date-info {
+      margin-top: 20px;
+      font-style: italic;
+    }
+
+    .restaurant-date-block {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+    }
+
+    .restaurant-date-block span {
+      font-weight: bold;
+      color: #333;
+    }
+
+  </style>
+</head>
+<body>
+  <h1>Admin Panel</h1>
+
+  <div class="admin-container">
+    <h3>Add New Restaurant</h3>
+    <input type="text" placeholder="Enter Restaurant Name" id="restaurantName">
+    <label for="restaurantDate">Select Date:</label>
+    <input type="date" id="restaurantDate">
+    <button onclick="addRestaurant()">Add Restaurant</button>
+
+    <h3>Generate Weekly Code</h3>
+    <button onclick="generateCode()">Generate Code</button>
+    <p id="codeDisplay"></p>
+    <p id="dateDisplay"></p>
+  </div>
+
+  <div class="date-info">
+    <div class="restaurant-date-block">
+      <span id="restaurantDateDisplay"></span>
+      <span id="uploadDate"></span>
+    </div>
+  </div>
+
+  <script>
+    function formatDate(date) {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+function addRestaurant() {
+  const restaurantName = document.getElementById('restaurantName').value.trim();
+  const restaurantDate = document.getElementById('restaurantDate').value;
+  const email = localStorage.getItem("adminEmail"); // ✅ email fetched from login
+
+  if (!restaurantName || !restaurantDate) {
+    alert("Please fill all fields.");
+    return;
+  }
+
+  if (!email) {
+    alert("Admin email not found. Please log in again.");
+    return;
+  }
+
+  fetch('http://localhost:8081/api/admin/add-restaurant', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: restaurantName,
+      date: restaurantDate,
+      adminEmail: email // ✅ used from localStorage
+    })
+  })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message || "Restaurant added successfully!");
+      document.getElementById('restaurantName').value = '';
+      document.getElementById('restaurantDate').value = '';
+    })
+    .catch(err => {
+      console.error("Fetch error:", err);
+      alert("Error adding restaurant.");
+    });
+}
+
+
+async function generateCode() {
+  const email = localStorage.getItem("adminEmail");
+
+  if (!email) {
+    alert("Admin email not found. Please log in again.");
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:8081/api/admin/generate-code", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }) // ✅ send email in object form
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      document.getElementById("codeDisplay").innerText = `Generated Code: ${data.code}`;
+      document.getElementById("dateDisplay").innerText = `Code generated on: ${new Date().toLocaleDateString()}`;
+      alert("✅ Weekly code generated successfully!");
+    } else {
+      alert("❌ Failed to generate code: " + (data.error || "Unknown error"));
+    }
+  } catch (err) {
+    console.error("Error:", err);
+    alert("❌ Failed to generate code due to network or server error.");
+  }
+}
+
+
+  </script>
+</body>
+</html>

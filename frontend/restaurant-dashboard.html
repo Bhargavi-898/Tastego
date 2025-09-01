@@ -1,0 +1,27 @@
+<h2>Pending Orders for Restaurant 't'</h2>
+<div id="orders"></div>
+
+<script>
+fetch("http://localhost:8080/api/orders/pending/t")
+  .then(res => res.json())
+  .then(data => {
+    const container = document.getElementById("orders");
+    data.forEach(order => {
+      const div = document.createElement("div");
+      div.innerHTML = `
+        <p><b>Student:</b> ${order.studentName}</p>
+        <p><b>Status:</b> ${order.status}</p>
+        <button onclick="verifyOrder('${order.studentName}')">✅ Verify</button><hr>
+      `;
+      container.appendChild(div);
+    });
+  });
+
+function verifyOrder(student) {
+  fetch(`http://localhost:8080/api/orders/verify?studentName=${student}&restaurantName=t`, {
+    method: "PUT"
+  })
+    .then(res => res.text())
+    .then(msg => alert(msg));
+}
+</script>

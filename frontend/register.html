@@ -1,0 +1,135 @@
+<form id="registerForm">
+  <input type="text" id="name" placeholder="Name" required />
+  <input type="email" id="email" placeholder="Email" required />
+  <input type="password" id="password" placeholder="Password" required />
+  <select id="role" required>
+    <option value="" disabled selected>Select Role</option>
+    <option value="student">Student</option>
+    <option value="admin">Admin</option>
+    <option value="restaurant">Restaurant</option>
+  </select>
+  <button type="submit">Register</button>
+</form>
+<style>
+/* Reset default styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Body */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #ff7e5f, #feb47b);
+}
+
+/* Form container */
+#registerForm {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 40px 30px;
+    border-radius: 15px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 400px;
+    animation: fadeIn 1s ease-in-out;
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px);}
+    to { opacity: 1; transform: translateY(0);}
+}
+
+/* Form title */
+#registerForm h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #333;
+}
+
+/* Input fields */
+#registerForm input,
+#registerForm select {
+    width: 100%;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    transition: 0.3s;
+}
+
+#registerForm input:focus,
+#registerForm select:focus {
+    border-color: #ff7e5f;
+    outline: none;
+    box-shadow: 0 0 5px rgba(255,126,95,0.5);
+}
+
+/* Submit button */
+#registerForm button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 50px;
+    background: #ff7e5f;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+}
+
+#registerForm button:hover {
+    background: #feb47b;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 450px) {
+    #registerForm {
+        padding: 30px 20px;
+    }
+    #registerForm input,
+    #registerForm select,
+    #registerForm button {
+        font-size: 0.95rem;
+    }
+}
+</style>
+
+<script>
+  document.getElementById("registerForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const role = document.getElementById("role").value;
+
+    try {
+      const res = await fetch("http://localhost:8081/api/user/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+
+      if (res.ok) {
+        alert("Registration successful. Please log in.");
+        window.location.href = "login.html";
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || "Registration failed.");
+      }
+    } catch (err) {
+      console.error("Registration error:", err);
+      alert("Something went wrong.");
+    }
+  });
+</script>
