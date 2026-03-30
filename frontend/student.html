@@ -1,33 +1,107 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Student Dashboard</title>
 <style>
-body { font-family: Arial; background:#f8f9fa; padding:20px;}
-.container { max-width:500px; margin:20px auto; background:white; padding:20px; border-radius:10px; box-shadow:0 4px 6px rgba(0,0,0,0.1);}
-h3,h4 { text-align:center; margin-bottom:20px; }
-.menu-item, .cart-item { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #ddd;}
-button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer;}
-.add-button { background:#ff3333; color:white;}
-.add-button:hover { background:#cc0000;}
-.remove-button { background:#ff6666; color:white;}
-.pay-button { background:#28a745; color:white; width:100%; margin-top:10px;}
-.pay-button:hover { background:#218838;}
-.summary { text-align:right; font-weight:bold; margin-top:10px;}
-.hidden { display:none;}
-img { width:100%; max-width:300px; display:block; margin:10px auto;}
-.instructions { color:#d9534f; text-align:center; font-weight:bold;}
-.token-display { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#333;}
-#dynamic-token { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#28a745;}
+body{
+  font-family: Arial;
+  background:#f4f4f4;
+  padding:20px;
+  margin-left: 270px;
+}
+#sidePanel {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 250px;
+  height: 100%;
+  background: #333;
+  color: white;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.side-btn {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  background: #555;
+  color: white;
+}
+.side-btn:hover {
+  background: #777;
+}
+.container {
+  max-width: 600px;
+  margin: 20px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+h1, h3, h4 { text-align:center; margin-bottom:20px; }
+.menu-item, .cart-item { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #ddd; }
+button { padding:10px 15px; border:none; border-radius:5px; cursor:pointer; }
+.add-button { background:#ff4d4d; color:white; }
+.add-button:hover { background:#cc0000; }
+.remove-button { background:#ff6666; color:white; }
+.pay-button { background:#28a745; color:white; width:100%; margin-top:10px; }
+.pay-button:hover { background:#218838; }
+.summary { text-align:right; font-weight:bold; margin-top:10px; }
+.hidden { display:none; }
+img { width:100%; max-width:300px; display:block; margin:10px auto; }
+.instructions { color:#d9534f; text-align:center; font-weight:bold; }
+.token-display { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#333; }
+#dynamic-token { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#28a745; }
 </style>
 </head>
 <body>
+<div id="sidePanel">
+  <button class="side-btn" onclick="showMenu()">🏠 Menu</button>
+  <button class="side-btn" onclick="toggleMyOrders()">🧾 My Orders</button>
+  <button class="side-btn" onclick="showOrderStatus()">📊 Order Status</button>
+  
+  <button class="side-btn" onclick="logout()">🚪 Logout</button>
+</div>
+<div
+id="timingBlock"
+style="
+background:white;
+padding:15px;
+margin:15px;
+border-radius:10px;
+box-shadow:0 2px 4px rgba(0,0,0,0.2);
+text-align:center;
+"
+>
 
-<div class="container">
+<h3>Today's Order Timing</h3>
+
+<p id="timingText">
+Loading timing...
+</p>
+
+</div>
+<div class="container" id="menu-section">
   <h3 id="restaurant-title">Menu</h3>
   <div id="menu"></div>
+</div>
+
+<div id="order-status-panel" class="container" style="margin-top:10px; display:none;">
+  <h4>Order Status</h4>
+  <div id="order-status-view" class="token-display">Waiting for restaurant verification...</div>
+</div>
+
+<div id="my-orders-section" style="display:none; margin-top:15px; border:1px solid #ccc; padding:10px;">
+  <h3>My Orders</h3>
+  <div id="my-orders">No orders yet</div>
 </div>
 
 <!-- Cart -->
@@ -57,32 +131,479 @@ img { width:100%; max-width:300px; display:block; margin:10px auto;}
 <div id="dynamic-token" class="hidden"></div>
 
 <script>
+
 let menu = [];
 let cart = [];
 let restaurant = '';
-const tokens = new Set();
+let studentEmail = localStorage.getItem("studentEmail");
+let studentName  = localStorage.getItem("studentName");
+// Load restaurant and menu
+async function loadRestaurantData(){
+  try{
+    const res = await fetch("http://localhost:8081/api/student/today-restaurants");
+    const restaurants = await res.json();
 
-// Load restaurant menu
-async function loadRestaurantData() {
-  restaurant = prompt("Enter restaurant name:");
-  if(!restaurant) return;
+    if(!restaurants || restaurants.length === 0){
+      document.getElementById("restaurant-title").textContent = "No available restaurant today";
+      document.getElementById("menu").innerHTML = "<p>No available restaurant today</p>";
+      return;
+    }
 
-  document.getElementById("restaurant-title").textContent = `Menu - ${restaurant}`;
+    restaurant = restaurants[0].name;
+    restaurantId = restaurants[0].id;
+    document.getElementById("restaurant-title").textContent = `Menu - ${restaurant}`;
 
-  try {
-    const menuRes = await fetch(`http://localhost:8081/api/menu/${restaurant}`);
-    const menuData = await menuRes.json();
-    menu = menuData.menuItems || [];
+    const menuRes = await fetch(`http://localhost:8081/api/student/menu/${restaurant}`);
+    menu = await menuRes.json();
+
     renderMenu();
+    checkTokenStatus();
   } catch(err){
-    alert("Error loading menu: " + err.message);
     console.error(err);
   }
 }
 
-function renderMenu() {
+// Toggle My Orders Section
+function toggleMyOrders(){
+
+  const section =
+  document.getElementById(
+    "my-orders-section"
+  );
+
+  if(section.style.display === "none"){
+
+    section.style.display =
+    "block";
+
+    document.getElementById(
+      "menu-section"
+    ).style.display =
+    "none";
+
+    /* IMPORTANT — hide status panel */
+
+    document.getElementById(
+      "order-status-panel"
+    ).style.display =
+    "none";
+
+    loadMyOrders();
+
+  }
+
+  else{
+
+    section.style.display =
+    "none";
+
+    document.getElementById(
+      "menu-section"
+    ).style.display =
+    "block";
+
+  }
+
+}
+function formatTimeToAMPM(time){
+
+  if(!time) return "";
+
+  const parts =
+  time.split(":");
+
+  let hours =
+  parseInt(parts[0]);
+
+  const minutes =
+  parts[1];
+
+  const ampm =
+  hours >= 12
+  ? "PM"
+  : "AM";
+
+  hours =
+  hours % 12;
+
+  if(hours === 0)
+    hours = 12;
+
+  return
+  hours
+  + ":"
+  + minutes
+  + " "
+  + ampm;
+
+}
+async function loadTodayTiming(){
+
+  try{
+
+    const res =
+    await fetch(
+      "http://localhost:8081/api/admin/timing"
+    );
+
+    const text =
+    document.getElementById(
+      "timingText"
+    );
+
+    if(!res.ok){
+
+      text.innerText =
+      "Timing not available";
+
+      return;
+
+    }
+
+    const data =
+    await res.json();
+
+    if(data === "NOT_SET"){
+
+      text.innerText =
+      "Timing not set by admin";
+
+      return;
+
+    }
+
+    text.innerText =
+      "Orders open from "
+      + data.openTime
+      + " to "
+      + data.closeTime;
+
+  }
+
+  catch(err){
+
+    console.error(err);
+
+    document.getElementById(
+      "timingText"
+    ).innerText =
+    "Timing not available";
+
+  }
+
+}
+async function checkOrderingTime(){
+
+  try{
+
+    const res =
+    await fetch(
+      "http://localhost:8081/api/admin/timing"
+    );
+
+    if(!res.ok){
+
+      disableOrdering();
+
+      return;
+
+    }
+
+    const data =
+    await res.json();
+
+    if(data === "NOT_SET"){
+
+      disableOrdering();
+
+      return;
+
+    }
+
+    const now =
+    new Date();
+
+    const currentMinutes =
+      now.getHours() * 60 +
+      now.getMinutes();
+
+    const openParts =
+      data.openTime.split(":");
+
+    const closeParts =
+      data.closeTime.split(":");
+
+    const openMinutes =
+      parseInt(openParts[0]) * 60 +
+      parseInt(openParts[1]);
+
+    const closeMinutes =
+      parseInt(closeParts[0]) * 60 +
+      parseInt(closeParts[1]);
+
+    if(
+      currentMinutes >= openMinutes &&
+      currentMinutes <= closeMinutes
+    ){
+
+      enableOrdering();
+
+    }
+    else{
+
+      disableOrdering();
+
+    }
+
+  }
+
+  catch(err){
+
+    console.error(err);
+
+    disableOrdering();
+
+  }
+
+}
+function showMenu(){
+
+  document.getElementById(
+    "menu-section"
+  ).style.display =
+  "block";
+
+  document.getElementById(
+    "my-orders-section"
+  ).style.display =
+  "none";
+
+  /* hide status */
+
+  document.getElementById(
+    "order-status-panel"
+  ).style.display =
+  "none";
+
+}
+function showCart(){
+  document.getElementById("cart-container").classList.remove("hidden");
+  document.getElementById("my-orders-section").style.display = "none";
+  document.getElementById("menu-section").style.display = "none";
+  document.getElementById("order-status-panel").style.display = "none";
+}
+
+function showOrderStatus(){
+
+  document.getElementById(
+    "order-status-panel"
+  ).style.display =
+  "block";
+
+  document.getElementById(
+    "menu-section"
+  ).style.display =
+  "none";
+
+  document.getElementById(
+    "my-orders-section"
+  ).style.display =
+  "none";
+
+}
+
+function logout(){
+  localStorage.removeItem("studentEmail");
+  localStorage.removeItem("studentName");
+  window.location.href = "login.html";
+}
+function enableOrdering(){
+
+  const addButtons =
+  document.querySelectorAll(
+    ".add-button"
+  );
+
+  addButtons.forEach(btn => {
+
+    btn.disabled = false;
+
+    btn.style.background =
+    "#ff4d4d";
+
+    btn.style.cursor =
+    "pointer";
+
+  });
+
+  const payButtons =
+  document.querySelectorAll(
+    ".pay-button"
+  );
+
+  payButtons.forEach(btn => {
+
+    btn.disabled = false;
+
+    btn.style.background =
+    "#28a745";
+
+    btn.style.cursor =
+    "pointer";
+
+  });
+
+}
+// Load My Orders
+async function loadMyOrders(){
+
+  try{
+
+    const res =
+    await fetch(
+      `http://localhost:8081/api/student/orders?studentEmail=${studentEmail}`
+    );
+
+    const data =
+    await res.json();
+
+    const container =
+    document.getElementById("my-orders");
+
+    container.innerHTML = "";
+
+    if(!data || data.length === 0){
+
+      container.innerHTML =
+      "No orders yet";
+
+      return;
+
+    }
+
+    data.forEach(order => {
+
+      const div =
+      document.createElement("div");
+
+      div.style.border =
+      "1px solid #ccc";
+
+      div.style.padding =
+      "10px";
+
+      div.style.marginBottom =
+      "10px";
+
+      // SAFELY handle menu items
+      let menuItems = "N/A";
+
+      if(order.menuItemNames){
+
+        if(Array.isArray(order.menuItemNames)){
+
+          menuItems =
+          order.menuItemNames.join(", ");
+
+        }
+
+        else{
+
+          menuItems =
+          order.menuItemNames;
+
+        }
+
+      }
+
+      div.innerHTML = `
+
+        <p>
+        <b>Restaurant:</b>
+        ${order.restaurantName}
+        </p>
+
+        <p>
+        <b>Menu Item:</b>
+        ${menuItems}
+        </p>
+
+        <p>
+        <b>Quantity:</b>
+        ${order.quantity}
+        </p>
+
+        <p>
+        <b>Status:</b>
+        ${order.status}
+        </p>
+
+        <p>
+        <b>Token:</b>
+        ${
+          order.tokenNumber
+          ? order.tokenNumber
+          : "Waiting"
+        }
+        </p>
+
+      `;
+
+      container.appendChild(div);
+
+    });
+
+  }
+
+  catch(err){
+
+    console.error(
+      "Error loading orders:",
+      err
+    );
+
+  }
+
+}
+async function checkOrderStatus(){
+
+  const res =
+  await fetch(
+  "http://localhost:8081/api/restaurant/order-status"
+  );
+
+  const status =
+  await res.text();
+
+  const btn =
+  document.getElementById(
+  "placeOrderBtn"
+  );
+
+  if(status === "OPEN"){
+
+    btn.disabled = false;
+
+    btn.innerText =
+    "Place Order";
+
+  }
+
+  else{
+
+    btn.disabled = true;
+
+    btn.innerText =
+    "Ordering Closed";
+
+  }
+
+}
+
+// Render Menu
+function renderMenu(){
   const menuDiv = document.getElementById("menu");
-  menuDiv.innerHTML = menu.map((item,index)=>`
+  menuDiv.innerHTML = menu.map((item, index) => `
     <div class="menu-item">
       <span>${item.name} - ₹${item.price}</span>
       <button class="add-button" onclick="addToCart(${index})">Add</button>
@@ -90,87 +611,281 @@ function renderMenu() {
   `).join('');
 }
 
+// Add to Cart
 function addToCart(index){
+  if(!menu[index]){
+    alert("Item not available");
+    return;
+  }
   cart.push(menu[index]);
   renderCart();
 }
 
+// Remove from Cart
 function removeFromCart(index){
-  cart.splice(index,1);
+  cart.splice(index, 1);
   renderCart();
 }
 
+// Render Cart
 function renderCart(){
   const cartContainer = document.getElementById("cart-container");
   const cartDiv = document.getElementById("cart");
   const totalDiv = document.getElementById("total");
 
-  if(cart.length===0){ cartContainer.classList.add("hidden"); return; }
+  if(cart.length === 0){
+    cartContainer.classList.add("hidden");
+    return;
+  }
 
   cartContainer.classList.remove("hidden");
-  cartDiv.innerHTML = cart.map((item,index)=>`
+
+  cartDiv.innerHTML = cart.map((item, index) => `
     <div class="cart-item">
       <span>${item.name} - ₹${item.price}</span>
       <button class="remove-button" onclick="removeFromCart(${index})">Remove</button>
     </div>
   `).join('');
 
-  const total = cart.reduce((sum,item)=>sum+item.price,0);
+  const total = cart.reduce((sum, item) => sum + item.price, 0);
   totalDiv.textContent = `Total: ₹${total.toFixed(2)}`;
 }
 
-// Show UPI scanner dynamically
+// Show UPI Scanner
 async function showUPIScanner(){
   document.getElementById("cart-container").classList.add("hidden");
   document.getElementById("upi-scanner").classList.remove("hidden");
 
-  try {
-    const scannerRes = await fetch(`http://localhost:8081/api/scanner/base64/${restaurant}`);
-    if(scannerRes.ok){
-      const scannerData = await scannerRes.json();
-      if(scannerData.base64){
-        document.getElementById("scannerImageDynamic").src = `data:image/png;base64,${scannerData.base64}`;
-      } else {
-        document.getElementById("scannerImageDynamic").alt = "No scanner available";
-      }
+  try{
+    const res = await fetch(`http://localhost:8081/api/scanner/base64/${encodeURIComponent(restaurant)}`);
+
+    if(!res.ok){
+      alert("Scanner not found");
+      console.error("Scanner error:", res.status);
+      return;
+    }
+
+    const data = await res.json();
+
+    if(data && data.base64){
+      document.getElementById("scannerImageDynamic").src = `data:image/png;base64,${data.base64}`;
     } else {
-      document.getElementById("scannerImageDynamic").alt = "Failed to fetch scanner";
+      alert("Invalid scanner response");
+      console.error("Invalid data:", data);
     }
   } catch(err){
-    console.error("Error fetching scanner:", err);
-    document.getElementById("scannerImageDynamic").alt = "Error loading scanner";
+    console.error("Error loading scanner:", err);
   }
 }
 
+// Show Upload Section
 function showUploadSection(){
   document.getElementById("upi-scanner").classList.add("hidden");
   document.getElementById("upload-section").classList.remove("hidden");
 }
 
-function verifyPayment(){
+// Verify Payment and Place Order
+async function verifyPayment(){
+  if(cart.length === 0){
+    alert("Cart is empty. Please add items.");
+    return;
+  }
+
   const screenshot = document.getElementById("paymentScreenshot").files[0];
-  if(!screenshot){ alert("Please upload a screenshot."); return; }
 
-  setTimeout(()=>{
-    const token = generateUniqueToken();
-    const tokenDiv = document.getElementById("dynamic-token");
-    tokenDiv.textContent = `Payment Verified! Your Token Number: ${token}`;
-    tokenDiv.classList.remove("hidden");
+  if(!screenshot){
+    alert("Please upload screenshot");
+    return;
+  }
 
+  try{
+    // Upload screenshot first
+    const formData1 = new FormData();
+    formData1.append("file", screenshot);
+
+    const uploadRes = await fetch(
+      "http://localhost:8081/api/student/upload-scanner",
+      {
+        method: "POST",
+        body: formData1
+      }
+    );
+
+    if(!uploadRes.ok){
+      alert("Screenshot upload failed: " + uploadRes.statusText);
+      return;
+    }
+
+    const fileName = await uploadRes.text();
+    console.log("Screenshot uploaded:", fileName);
+
+    // Prepare order data
+    const formData2 = new FormData();
+    formData2.append("studentName", studentName);
+    formData2.append("studentEmail", studentEmail);
+    formData2.append("restaurantName", restaurant);
+    formData2.append("menuItemId", cart[0].id);
+const menuNames =
+cart.map(item => item.name);
+
+formData2.append(
+  "menuItemNames",
+  JSON.stringify(menuNames)
+);
+
+formData2.append(
+  "quantity",
+  cart.length
+);    formData2.append("quantity", cart.length);
+    formData2.append("scannerFileName", fileName);
+
+    // Place order
+    const orderRes = await fetch(
+      "http://localhost:8081/api/student/place-order",
+      {
+        method: "POST",
+        body: formData2
+      }
+    );
+
+    if(!orderRes.ok){
+      alert("Order submission failed: " + orderRes.statusText);
+      return;
+    }
+
+    const orderId = await orderRes.text();
+    console.log("Order placed successfully:", orderId);
+
+    // Show confirmation message
     document.getElementById("upload-section").classList.add("hidden");
-    cart=[];
+    setOrderStatusMessage("Payment submitted. Waiting for restaurant verification...", "orange");
+
+    // Clear cart
+    cart = [];
     renderCart();
-  },2000);
+    checkTokenStatus();
+
+  } catch(err){
+    console.error("Error placing order:", err);
+    alert("Error placing order: " + err.message);
+  }
 }
 
-function generateUniqueToken(){
-  let token;
-  do{ token = Math.floor(Math.random()*10000)+1; } while(tokens.has(token));
-  tokens.add(token);
-  return token;
+// Check Token Status
+function setOrderStatusMessage(message, color = "black") {
+
+  const statusDiv =
+  document.getElementById(
+  "order-status-message"
+  );
+
+  const statusPanel =
+  document.getElementById(
+  "order-status-panel"
+  );
+
+  const statusView =
+  document.getElementById(
+  "order-status-view"
+  );
+
+  if (statusDiv) {
+
+    statusDiv.textContent =
+    message;
+
+    statusDiv.style.color =
+    color;
+
+    statusDiv.classList.remove(
+    "hidden"
+    );
+
+  }
+
+  if (statusView) {
+
+    statusView.textContent =
+    message;
+
+    statusView.style.color =
+    color;
+
+  }
+
+}
+function checkTokenStatus(){
+  let attempts = 0;
+  const maxAttempts = 100; // 5 minutes max (100 * 3s)
+  
+  const interval = setInterval(async () => {
+    attempts++;
+    
+    if(attempts > maxAttempts){
+      clearInterval(interval);
+      return;
+    }
+    
+    try{
+      const res = await fetch(
+        `http://localhost:8081/api/student/token?studentEmail=${encodeURIComponent(studentEmail)}&restaurantName=${encodeURIComponent(restaurant)}`
+      );
+      
+      const text = await res.text();
+      if(!res.ok){
+        setOrderStatusMessage(text || "Waiting for order status...", "orange");
+        return;
+      }
+      
+      setOrderStatusMessage(text, text.includes("Token") || text.includes("Accepted") ? "green" : text.includes("Reject") ? "red" : "orange");
+
+      if(text.includes("Token") || text.includes("Accepted") || text.includes("Reject")){
+        clearInterval(interval);
+      }
+    } catch(err){
+      console.error("Error checking token:", err);
+    }
+  }, 3000);
 }
 
-window.onload = loadRestaurantData;
+// Disable Ordering
+function disableOrdering(){
+  const addButtons = document.querySelectorAll(".add-button");
+  addButtons.forEach(btn => {
+    btn.disabled = true;
+    btn.style.background = "#ccc";
+    btn.style.cursor = "not-allowed";
+  });
+
+  const payButtons = document.querySelectorAll(".pay-button");
+  payButtons.forEach(btn => {
+    btn.disabled = true;
+    btn.style.background = "#ccc";
+    btn.style.cursor = "not-allowed";
+  });
+}
+
+// Reset Ordering on New Day
+function resetOrderingNextDay(){
+  const today = new Date().toISOString().split("T")[0];
+  const storedDate = localStorage.getItem("orderDate");
+
+  if(storedDate !== today){
+    localStorage.removeItem("orderingDisabled");
+  }
+}
+
+// Initialize on page load
+window.onload = function(){
+  loadRestaurantData();
+  loadTodayTiming();
+  checkOrderingTime();
+};
+setInterval(
+checkOrderStatus,
+30000
+);
+
 </script>
 </body>
 </html>

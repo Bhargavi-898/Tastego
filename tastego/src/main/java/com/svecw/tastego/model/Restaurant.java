@@ -2,6 +2,7 @@ package com.svecw.tastego.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.LocalDate;
 
 @Document(collection = "restaurants")
@@ -10,23 +11,42 @@ public class Restaurant {
     @Id
     private String id;
 
+    // Timing fields
+
+    private String openTime;   // example: 12:00
+    private String closeTime;  // example: 14:00
+
     private String name;
-    private LocalDate date;  // Use LocalDate here for consistency
+
+    private LocalDate date;
+
     private String adminEmail;
+
     private String code;
 
     // Default constructor
+
     public Restaurant() {}
 
     // Parameterized constructor
-    public Restaurant(String name, LocalDate date, String adminEmail, String code) {
+
+    public Restaurant(
+            String name,
+            LocalDate date,
+            String adminEmail,
+            String code) {
+
         this.name = name;
         this.date = date;
         this.adminEmail = adminEmail;
         this.code = code;
+
     }
 
+    // ========================
     // Getters and Setters
+    // ========================
+
     public String getId() {
         return id;
     }
@@ -66,4 +86,25 @@ public class Restaurant {
     public void setCode(String code) {
         this.code = code;
     }
+
+    // ========================
+    // NEW — Timing Getters/Setters
+    // ========================
+
+    public String getOpenTime() {
+        return openTime;
+    }
+
+    public void setOpenTime(String openTime) {
+        this.openTime = openTime;
+    }
+
+    public String getCloseTime() {
+        return closeTime;
+    }
+
+    public void setCloseTime(String closeTime) {
+        this.closeTime = closeTime;
+    }
+
 }

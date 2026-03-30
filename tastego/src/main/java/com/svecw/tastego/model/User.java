@@ -12,9 +12,8 @@ public class User {
     private String name;
     private String email;
     private String password;
-    private String role;  // ✅ Add this line
+    private String role;
 
-    // ✅ Constructors
     public User() {
     }
 
@@ -25,7 +24,6 @@ public class User {
         this.role = role;
     }
 
-    // ✅ Getters and Setters
     public String getId() {
         return id;
     }

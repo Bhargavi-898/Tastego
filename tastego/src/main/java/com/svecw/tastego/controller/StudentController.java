@@ -1,26 +1,20 @@
 package com.svecw.tastego.controller;
 
-import com.svecw.tastego.model.MenuItem;
-import com.svecw.tastego.model.Order;
-import com.svecw.tastego.model.Restaurant;
-import com.svecw.tastego.model.RestaurantMenu;
-import com.svecw.tastego.repository.RestaurantMenuRepository;
-import com.svecw.tastego.repository.OrderRepository;
-import com.svecw.tastego.repository.RestaurantRepository;
+import com.svecw.tastego.model.*;
+import com.svecw.tastego.repository.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.util.Optional;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-
+import java.util.Arrays;
 @RestController
 @RequestMapping("/api/student")
 @CrossOrigin("*")
@@ -35,98 +29,194 @@ public class StudentController {
     @Autowired
     private OrderRepository orderRepo;
 
-    // View today's assigned restaurant(s)
-    @GetMapping("/restaurant")
-public ResponseEntity<List<Restaurant>> getTodayRestaurants() {
-    LocalDate today = LocalDate.now();  // Correct type
-    List<Restaurant> restaurants = restaurantRepo.findByDate(today); // Define 'restaurants'
-    return ResponseEntity.ok(restaurants);
-}
-
-
-    // View menu for selected restaurant
     @GetMapping("/menu/{restaurantName}")
     public ResponseEntity<?> getMenu(@PathVariable String restaurantName) {
         RestaurantMenu menu = restaurantMenuRepository.findByRestaurantName(restaurantName);
-        if (menu == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Menu not found for restaurant: " + restaurantName);
+
+        if (menu == null || menu.getMenuItems() == null) {
+            return ResponseEntity.badRequest().body("Menu not found");
         }
-        List<MenuItem> menuItems = menu.getMenuItems();
-        return ResponseEntity.ok(menuItems);
+
+        return ResponseEntity.ok(menu.getMenuItems());
     }
 
-    // Upload UPI Scanner file
     @PostMapping("/upload-scanner")
     public ResponseEntity<String> uploadScanner(@RequestParam MultipartFile file) throws IOException {
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body("File is empty");
+        String uploadDir = System.getProperty("user.dir") + File.separator + "uploads" +
+                File.separator + "scanners" + File.separator;
+
+        File dir = new File(uploadDir);
+
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
 
-        String uploadDir = "uploads/scanners/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs();
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        File destination = new File(uploadDir + fileName);
 
-        String uniqueName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        file.transferTo(new File(uploadDir + uniqueName));
+        file.transferTo(destination);
 
-        return ResponseEntity.ok(uniqueName);
+        return ResponseEntity.ok(fileName);
     }
 
-    // Place order - use IDs and quantity, with scanner file name for payment screenshot
     @PostMapping("/place-order")
     public ResponseEntity<String> placeOrder(
-            @RequestParam String studentId,
-            @RequestParam String restaurantId,
+            @RequestParam String studentName,
+            @RequestParam String studentEmail,
+            @RequestParam String restaurantName,
             @RequestParam String menuItemId,
+@RequestParam String menuItemNames,
             @RequestParam int quantity,
             @RequestParam String scannerFileName) {
 
         Order order = new Order();
-        order.setStudentId(studentId);
-        order.setRestaurantId(restaurantId);
+
+        order.setStudentName(studentName);
+        order.setStudentEmail(studentEmail);
+        order.setRestaurantName(restaurantName);
         order.setMenuItemId(menuItemId);
-        order.setQuantity(quantity);
+List<String> items =
+        Arrays.asList(
+                menuItemNames
+                        .replace("[","")
+                        .replace("]","")
+                        .replace("\"","")
+                        .split(",")
+        );
+
+order.setMenuItemNames(items);        order.setQuantity(quantity);
         order.setPaymentScreenshot(scannerFileName);
         order.setStatus("PENDING");
+        order.setTokenNumber(null);
+        order.setDate(LocalDate.now());
         order.setOrderTime(LocalDateTime.now());
         order.setAcknowledged(false);
 
         orderRepo.save(order);
 
-        return ResponseEntity.ok("Order placed. Awaiting restaurant verification.");
+        return ResponseEntity.ok(order.getId());
     }
 
-    // Check token - search by studentId and restaurantId
     @GetMapping("/token")
-    public ResponseEntity<String> getToken(@RequestParam String studentId, @RequestParam String restaurantId) {
-        Order order = orderRepo.findByStudentIdAndRestaurantId(studentId, restaurantId);
-        if (order == null) return ResponseEntity.ok("Order not found.");
-        if (!"ACCEPTED".equalsIgnoreCase(order.getStatus())) return ResponseEntity.ok("Order is not yet verified.");
-        return ResponseEntity.ok("Your token: " + order.getTokenNumber());
-    }
+    public ResponseEntity<?> getToken(
+            @RequestParam String studentEmail,
+            @RequestParam String restaurantName) {
 
-    // Acknowledge food received
-    @PutMapping("/acknowledge")
-    public ResponseEntity<String> acknowledge(@RequestParam String studentId, @RequestParam String restaurantId) {
-        Order order = orderRepo.findByStudentIdAndRestaurantId(studentId, restaurantId);
-        if (order == null) return ResponseEntity.notFound().build();
+        List<Order> orders = orderRepo.findByStudentEmailAndRestaurantName(studentEmail, restaurantName);
 
-        order.setAcknowledged(true);
-        orderRepo.save(order);
-        return ResponseEntity.ok("Order acknowledged. Thank you!");
-    }
-
-    // Get current order status
-    @GetMapping("/order/status")
-    public ResponseEntity<?> getOrderStatus(
-            @RequestParam String studentId,
-            @RequestParam String restaurantId) {
-
-        Order order = orderRepo.findByStudentIdAndRestaurantId(studentId, restaurantId);
-        if (order == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No order found.");
+        if (orders == null || orders.isEmpty()) {
+            return ResponseEntity.ok("Order not found");
         }
 
-        return ResponseEntity.ok(order);
+        Order order = orders.get(orders.size() - 1);
+
+        if ("ACCEPTED".equalsIgnoreCase(order.getStatus())) {
+            return ResponseEntity.ok("Order Accepted. Token Number: " + order.getTokenNumber());
+        }
+
+        if ("REJECTED".equalsIgnoreCase(order.getStatus())) {
+            return ResponseEntity.ok("Order Rejected by Restaurant");
+        }
+
+        return ResponseEntity.ok("Waiting for restaurant verification");
+    }
+
+    @GetMapping("/today-restaurants")
+    public ResponseEntity<?> getTodayRestaurants() {
+        List<Restaurant> restaurants = restaurantRepo.findByDate(LocalDate.now());
+        return ResponseEntity.ok(restaurants);
+    }
+
+@GetMapping("/orders")
+public ResponseEntity<?> getStudentOrders(
+        @RequestParam String studentEmail) {
+
+    try {
+
+        LocalDate today =
+                LocalDate.now();
+
+        // Get today's restaurant
+
+        List<Restaurant> restaurants =
+                restaurantRepo.findByDate(today);
+
+        if (restaurants == null ||
+            restaurants.isEmpty()) {
+
+            return ResponseEntity.ok(
+                    List.of()
+            );
+
+        }
+
+        String todayRestaurant =
+                restaurants.get(0)
+                .getName();
+
+        // Create time range
+
+        LocalDateTime startOfDay =
+                today.atStartOfDay();
+
+        LocalDateTime endOfDay =
+                today.atTime(23, 59, 59);
+
+        // Fetch only today's orders
+
+        List<Order> orders =
+                orderRepo
+                .findByStudentEmailAndRestaurantNameAndOrderTimeBetween(
+                        studentEmail,
+                        todayRestaurant,
+                        startOfDay,
+                        endOfDay
+                );
+
+        return ResponseEntity.ok(
+                orders
+        );
+
+    }
+
+    catch (Exception e) {
+
+        e.printStackTrace();
+
+        return ResponseEntity.ok(
+                List.of()
+        );
+
+    }
+
+}
+
+    @GetMapping("/order/status")
+    public ResponseEntity<?> getOrderStatus(
+            @RequestParam String studentEmail,
+            @RequestParam String restaurantId) {
+
+        List<Order> orders = orderRepo.findByStudentEmailAndRestaurantId(studentEmail, restaurantId);
+
+        if (orders == null || orders.isEmpty()) {
+            return ResponseEntity.badRequest().body("Order not found");
+        }
+
+        Order order = orders.get(orders.size() - 1);
+
+        if ("ACCEPTED".equals(order.getStatus())) {
+            return ResponseEntity.ok(
+                    java.util.Map.of(
+                            "message", "Your order placed",
+                            "token", order.getTokenNumber()
+                    )
+            );
+        }
+
+        return ResponseEntity.ok(
+                java.util.Map.of(
+                        "message", "Waiting for restaurant verification"
+                )
+        );
     }
 }

@@ -8,12 +8,12 @@ import com.svecw.tastego.repository.RestaurantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.time.LocalTime;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
+import java.util.Map;
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/restaurant")
@@ -40,10 +40,10 @@ public class RestaurantController {
     }
 
     // 2. View All Student Orders for the restaurant today
-    @GetMapping("/orders/{restaurantId}")
-    public ResponseEntity<?> viewOrders(@PathVariable String restaurantId) {
+    @GetMapping("/orders/{restaurantName}")
+    public ResponseEntity<?> viewOrders(@PathVariable String restaurantName) {
         LocalDate today = LocalDate.now();
-        List<Order> orders = orderRepository.findByRestaurantIdAndDate(restaurantId, today);
+        List<Order> orders = orderRepository.findByRestaurantNameAndDate(restaurantName, today);
         return ResponseEntity.ok(orders);
     }
 
@@ -61,7 +61,92 @@ public class RestaurantController {
         }
         return ResponseEntity.status(404).body("Order not found");
     }
+@GetMapping("/order-status")
+public ResponseEntity<?> getOrderStatus() {
 
+    LocalDate today =
+            LocalDate.now();
+
+    List<Restaurant> restaurants =
+            restaurantRepository
+            .findByDate(today);
+
+    if (restaurants.isEmpty()) {
+
+        return ResponseEntity.ok(
+                "CLOSED"
+        );
+
+    }
+
+    Restaurant restaurant =
+            restaurants.get(0);
+
+    LocalTime now =
+            LocalTime.now();
+
+    LocalTime open =
+            LocalTime.parse(
+                    restaurant.getOpenTime()
+            );
+
+    LocalTime close =
+            LocalTime.parse(
+                    restaurant.getCloseTime()
+            );
+
+    if (now.isAfter(open)
+            &&
+        now.isBefore(close)) {
+
+        return ResponseEntity.ok(
+                "OPEN"
+        );
+
+    }
+
+    return ResponseEntity.ok(
+            "CLOSED"
+    );
+
+}
+@GetMapping("/today-timing")
+public ResponseEntity<?> getTodayTiming() {
+
+    LocalDate today =
+            LocalDate.now();
+
+    List<Restaurant> restaurants =
+            restaurantRepository
+            .findByDate(today);
+
+    if (restaurants.isEmpty()) {
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "status", "NO_RESTAURANT"
+                )
+        );
+
+    }
+
+    Restaurant restaurant =
+            restaurants.get(0);
+
+    return ResponseEntity.ok(
+            Map.of(
+                    "restaurantName",
+                    restaurant.getName(),
+
+                    "openTime",
+                    restaurant.getOpenTime(),
+
+                    "closeTime",
+                    restaurant.getCloseTime()
+            )
+    );
+
+}
     // 4. Reject Order
     @PostMapping("/reject")
     public ResponseEntity<?> rejectOrder(@RequestParam String orderId) {

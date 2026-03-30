@@ -92,9 +92,16 @@
 
             <!-- Spring Boot Plugin -->
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+
+    <configuration>
+        <mainClass>
+            com.svecw.tastego.TasteGoApplication
+        </mainClass>
+    </configuration>
+
+</plugin>
         </plugins>
     </build>
 </project>

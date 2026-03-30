@@ -99,119 +99,318 @@
     <a href="forgot-password.html" class="forgot-password">Forgot Password?</a>
   </main>
 
-  <script>
-    const loginTypeSelector = document.getElementById("loginType");
-    const fieldsContainer = document.getElementById("fieldsContainer");
-    const form = document.getElementById("loginForm");
+<script>
 
-    loginTypeSelector.addEventListener("change", () => {
-      const loginType = loginTypeSelector.value;
-      fieldsContainer.innerHTML = "";
+const loginTypeSelector =
+document.getElementById("loginType");
 
-      if (loginType === "restaurant") {
-        fieldsContainer.innerHTML = `
-          <input type="text" id="restaurantName" placeholder="Restaurant Name" required />
-          <input type="text" id="restaurantCode" placeholder="Generated Code" required />
-        `;
-      } else {
-        fieldsContainer.innerHTML = `
-          <input type="email" id="email" placeholder="Enter Email or Username" required />
-          <input type="password" id="password" placeholder="Enter Password" required />
-        `;
-      }
-    });
+const fieldsContainer =
+document.getElementById("fieldsContainer");
 
-    form.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const loginType = loginTypeSelector.value;
+const form =
+document.getElementById("loginForm");
 
-      if (!loginType) {
-        alert("Please select a login type.");
-        return;
-      }
+/* Change fields */
 
-      if (loginType === "restaurant") {
-        const name = document.getElementById("restaurantName").value.trim();
-        const code = document.getElementById("restaurantCode").value.trim();
+loginTypeSelector.addEventListener(
+"change",
+() => {
 
-        if (!name || !code) {
-          alert("Please fill in all fields.");
-          return;
-        }
+const loginType =
+loginTypeSelector.value;
 
-        try {
-         const res = await fetch("http://localhost:8081/api/admin/restaurant/login", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({ name, code })
-});
+fieldsContainer.innerHTML = "";
 
-          const data = await res.json();
-          if (res.ok) {
-            alert("✅ Restaurant login successful!");
-            localStorage.setItem("restaurantName", name);
-            window.location.href = "menu-management.html";
-          } else {
-            alert("❌ Login failed: " + (data.error || "Invalid credentials"));
-          }
-        } catch (err) {
-          console.error(err);
-          alert("❌ Network or server error.");
-        }
+if (loginType === "restaurant") {
 
-      } else {
-        // Student or Admin login
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value.trim();
+fieldsContainer.innerHTML = `
 
-        if (!email || !password) {
-          alert("Please fill in all fields.");
-          return;
-        }
+<input
+type="text"
+id="restaurantName"
+placeholder="Restaurant Name"
+required
+/>
 
-        try {
-          const res = await fetch("http://localhost:8081/api/user/login", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email, password })
-          });
+<input
+type="text"
+id="restaurantCode"
+placeholder="Generated Code"
+required
+/>
 
-          const data = await res.json();
+`;
 
-          if (res.ok && data.role && data.role.toLowerCase() === loginType) {
-            alert("✅ Login Successful!");
+}
 
-            localStorage.setItem("userEmail", email);
-            localStorage.setItem("userRole", loginType);
+else {
 
-            if (loginType === "student") {
-              window.location.href = "student.html";
-            } else if (loginType === "admin") {
-              localStorage.setItem("adminEmail", email);
-              window.location.href = "admin.html";
-            }
+fieldsContainer.innerHTML = `
 
-          } else {
-            alert("❌ Invalid credentials or role mismatch.");
-          }
+<input
+type="email"
+id="email"
+placeholder="Enter Email"
+required
+/>
 
-        } catch (err) {
-          console.error("Login error:", err);
-          alert("❌ Login failed: " + err.message);
-        }
-      }
-    });
+<input
+type="password"
+id="password"
+placeholder="Enter Password"
+required
+/>
 
-    // Trigger the field rendering when page loads if a value is already selected
-    window.addEventListener("DOMContentLoaded", () => {
-      if (loginTypeSelector.value) {
-        loginTypeSelector.dispatchEvent(new Event("change"));
-      }
-    });
-  </script>
+`;
+
+}
+
+}
+);
+
+/* LOGIN */
+
+form.addEventListener(
+"submit",
+async function (e) {
+
+e.preventDefault();
+
+const loginType =
+loginTypeSelector.value;
+
+if (!loginType) {
+
+alert("Please select login type");
+
+return;
+
+}
+
+/* RESTAURANT LOGIN */
+
+if (loginType === "restaurant") {
+
+const name =
+document.getElementById(
+"restaurantName"
+).value.trim();
+
+const code =
+document.getElementById(
+"restaurantCode"
+).value.trim();
+
+try {
+
+const res =
+await fetch(
+"http://localhost:8081/api/admin/restaurant/login",
+{
+method: "POST",
+headers: {
+"Content-Type":
+"application/json"
+},
+body: JSON.stringify({
+name,
+code
+})
+}
+);
+
+const data =
+await res.json();
+
+if (res.ok) {
+
+alert(
+"Restaurant login successful"
+);
+
+/* CLEAR OLD DATA */
+
+localStorage.removeItem(
+"restaurantName"
+);
+
+localStorage.removeItem(
+"restaurantId"
+);
+
+/* SAVE NEW RESTAURANT */
+
+localStorage.setItem(
+"restaurantName",
+data.name
+);
+
+localStorage.setItem(
+"restaurantId",
+data.id
+);
+
+window.location.href =
+"menu-management.html";
+
+}
+
+else {
+
+alert(
+"Invalid restaurant login"
+);
+
+}
+
+}
+
+catch (err) {
+
+console.error(err);
+
+alert("Server error");
+
+}
+
+}
+
+/* STUDENT / ADMIN LOGIN */
+
+else {
+
+const email =
+document.getElementById(
+"email"
+).value.trim();
+
+const password =
+document.getElementById(
+"password"
+).value.trim();
+
+try {
+
+const res =
+await fetch(
+"http://localhost:8081/api/user/login",
+{
+method: "POST",
+headers: {
+"Content-Type":
+"application/json"
+},
+body: JSON.stringify({
+email,
+password
+})
+}
+);
+
+const data =
+await res.json();
+
+if (
+res.ok &&
+data.role &&
+data.role.toLowerCase()
+=== loginType
+) {
+
+alert(
+"Login successful"
+);
+
+/* CLEAR OLD USER DATA */
+
+localStorage.removeItem(
+"studentEmail"
+);
+
+localStorage.removeItem(
+"studentName"
+);
+
+/* SAVE CURRENT USER */
+
+localStorage.setItem(
+"studentEmail",
+data.email
+);
+
+localStorage.setItem(
+"studentName",
+data.name
+);
+
+localStorage.setItem(
+"userRole",
+loginType
+);
+
+if (loginType === "student") {
+
+window.location.href =
+"student.html";
+
+}
+
+else {
+
+localStorage.setItem(
+"adminEmail",
+data.email
+);
+
+window.location.href =
+"admin.html";
+
+}
+
+}
+
+else {
+
+alert(
+"Invalid credentials"
+);
+
+}
+
+}
+
+catch (err) {
+
+console.error(err);
+
+alert("Login failed");
+
+}
+
+}
+
+}
+);
+
+/* Render fields on load */
+
+window.addEventListener(
+"DOMContentLoaded",
+() => {
+
+if (
+loginTypeSelector.value
+) {
+
+loginTypeSelector.dispatchEvent(
+new Event("change")
+);
+
+}
+
+}
+);
+
+</script>
 </body>
 </html>

@@ -9,23 +9,31 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface RestaurantRepository extends MongoRepository<Restaurant, String> {
+public interface RestaurantRepository 
+        extends MongoRepository<Restaurant, String> {
 
-    // Find all restaurants by admin email
+    // Find all restaurants added by a specific admin
     List<Restaurant> findAllByAdminEmail(String adminEmail);
 
-    // Find restaurant by name and code (login)
-    Restaurant findByNameAndCode(String name, String code);
+    // Login using restaurant name and code
+    Optional<Restaurant> findByNameAndCode(
+            String name,
+            String code
+    );
 
-    // Find restaurant by name (used in ScannerImageController)
-    Restaurant findByName(String name);
-
-    // Find restaurants by date
+    // Find restaurants available on a specific date
     List<Restaurant> findByDate(LocalDate date);
 
-    // Check if code already exists
+    // Check if restaurant code already exists
     boolean existsByCode(String code);
 
-    // Find restaurant by code
+    // Find restaurant by unique code
     Optional<Restaurant> findByCode(String code);
+
+    // Find restaurant by name
+    Optional<Restaurant> findByName(String name);
+
+    // Delete restaurants before a given date (for daily cleanup)
+    void deleteByDateBefore(LocalDate date);
+
 }

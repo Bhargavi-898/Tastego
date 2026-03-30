@@ -1,134 +1,393 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Restaurant Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Restaurant Menu Management</title>
   <style>
-    body { font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; }
-    .container { width: 500px; margin: 20px auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    h3 { text-align: center; margin-bottom: 20px; }
-    .input, .button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
-    .button { background-color: #d32f2f; color: white; cursor: pointer; }
-    .button:hover { background-color: #9a0007; }
-    .menu-item { display: flex; gap: 10px; margin: 10px 0; }
-    .remove-button { background: #d32f2f; color: white; border: none; padding: 0 10px; cursor: pointer; border-radius: 5px; }
-    .remove-button:hover { background-color: #9a0007; }
-    .image-preview { margin-top: 10px; text-align: center; }
-    .image-preview img { max-width: 100%; border-radius: 5px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+    }
+    #sidePanel {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 250px;
+      height: 100%;
+      background: #333;
+      color: white;
+      padding: 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .side-btn {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      background: #555;
+      color: white;
+    }
+    .side-btn:hover { background: #777; }
+    .page-header { margin-left: 270px; color: #ff4d4d; font-size: 2rem; text-align: center; }
+    .content {
+      margin-left: 270px;
+      max-width: 900px;
+      margin-top: 10px;
+      padding-bottom: 30px;
+    }
+    .panel { background: white; border: 1px solid #ccc; border-radius: 10px; padding: 20px; margin: 12px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    input, button, .field, .btn {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    button, .btn { background: #ff4d4d; color: white; border: 1px solid #ff4d4d; cursor: pointer; }
+    button:hover, .btn:hover { background: #cc0000; border-color: #cc0000; }
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .action-row .btn { width: auto; padding: 10px 16px; }
+    .menu-item-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 8px; margin-bottom: 8px; }
+    .order-card { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .order-card p { margin: 5px 0; }
+    .message { margin-top: 6px; font-size: 0.9rem; }
+    .message.error { color: #b91c1c; }
+    @media (max-width: 860px) {
+      #sidePanel { position: static; width: 100%; height: auto; }
+      .page-header, .content { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
-
-  <!-- Menu Upload Section -->
-  <div class="container">
-    <h3>Upload Menu Items</h3>
-    <form id="menuForm">
-      <div id="menuItemsContainer"></div>
-      <button type="button" class="button" onclick="addMenuItem()">Add Menu Item</button>
-      <button type="button" class="button" onclick="saveMenu()">Save Menu</button>
-    </form>
+  <div id="sidePanel">
+    <button class="side-btn" onclick="showSection('menuSection')">🍽️ Menu Upload</button>
+    <button class="side-btn" onclick="showSection('upiSection')">📸 UPI Scanner</button>
+    <button class="side-btn" onclick="showSection('ordersSection')">🧾 Orders</button>
+    <button class="side-btn" onclick="logoutRestaurant()">🔓 Logout</button>
   </div>
 
-  <!-- UPI Scanner Section -->
-  <div class="container">
-    <h3>Upload UPI Screenshot</h3>
-    <input type="file" class="input" id="upiScannerInput" accept="image/*" onchange="previewUPIImage()" />
-    <div class="image-preview" id="upiScannerPreview"></div>
-    <button type="button" class="button" onclick="saveUPIScanner()">Upload UPI Screenshot</button>
+  <h1 class="page-header">Restaurant Menu Management</h1>
+  <p id="restaurantNameDisplay" style="text-align:center;font-size:1.1rem;margin:6px 0 14px;color:#333;">Not logged in</p>
+
+  <div class="content">
+    <div id="loginSection" class="panel">
+      <h2>Restaurant Login</h2>
+      <input type="text" id="restaurantCode" class="field" placeholder="Enter Restaurant Code" />
+      <button class="btn" onclick="loginRestaurant()">Login</button>
+      <p id="loginError" class="message error" style="display:none;"></p>
+    </div>
+
+    <div id="mainContent" style="display:none;">
+      <div id="menuSection" class="panel" style="display:none;">
+        <h2>Menu Upload</h2>
+        <div id="menuItemsContainer"></div>
+        <button class="btn" onclick="addMenuItem()">Add Menu Item</button>
+        <button class="btn" onclick="saveMenu()">Save Menu</button>
+      </div>
+
+      <div id="upiSection" class="panel" style="display:none;">
+        <h2>UPI Scanner</h2>
+        <input type="file" id="upiScannerInput" class="field" accept="image/*" onchange="previewUPIImage()" />
+        <div id="upiScannerPreview" style="text-align:center;"></div>
+        <button class="btn" onclick="saveUPIScanner()">Upload Screenshot</button>
+      </div>
+
+      <div id="ordersSection" class="panel" style="display:none;">
+        <h2>Orders</h2>
+        <div class="action-row">
+          <button class="btn" onclick="loadPendingOrders()">Pending Orders</button>
+          <button class="btn" onclick="loadAcceptedOrders()">Accepted Orders</button>
+        </div>
+        <div id="orders" class="order-list"><p class="message">Click the buttons above to load orders</p></div>
+      </div>
+    </div>
   </div>
 
   <script>
-    // ====== Menu Section ======
-    function addMenuItem(name='', price='') {
-      const container = document.getElementById('menuItemsContainer');
-      const div = document.createElement('div');
-      div.className = 'menu-item';
-      div.innerHTML = `
-        <input type="text" class="input menu-item-name" placeholder="Menu Item Name" value="${name}" required />
-        <input type="number" class="input menu-item-price" placeholder="Price" value="${price}" required />
-        <button type="button" class="remove-button" onclick="removeMenuItem(this)">X</button>
-      `;
-      container.appendChild(div);
+    let restaurantName = localStorage.getItem('restaurantName') || '';
+    let restaurantId = localStorage.getItem('restaurantId') || '';
+
+    function showSection(sectionId) {
+      document.getElementById('menuSection').style.display = 'none';
+      document.getElementById('upiSection').style.display = 'none';
+      document.getElementById('ordersSection').style.display = 'none';
+      document.getElementById(sectionId).style.display = 'block';
     }
 
-    function removeMenuItem(button) {
-      button.parentElement.remove();
+    function showLoginError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.style.display = msg ? 'block' : 'none';
     }
-async function loadPreviousMenu(restaurantName) {
-    try {
-        const res = await fetch(`http://localhost:8081/api/admin/restaurant/menu?restaurantName=${restaurantName}`);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.menuItems && data.menuItems.length > 0) {
-                renderMenu(data.menuItems); // renderMenu can now take an array
-                alert("Previous menu loaded. You can modify it.");
-            }
-        }
-    } catch (err) {
-        console.error("Error fetching previous menu:", err);
+
+    function showMainContent() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+      document.getElementById('restaurantNameDisplay').textContent = `Restaurant: ${restaurantName}`;
+      showSection('menuSection');
+      loadPreviousMenu(restaurantName);
+      loadPendingOrders();
     }
-}
 
-function renderMenu(menuItems) {
-    const menuDiv = document.getElementById("menu");
-    menuDiv.innerHTML = menuItems.map((item, index) => `
-        <div class="menu-item">
-            <input type="text" value="${item.name}" onchange="menuItems[${index}].name=this.value" />
-            <input type="number" value="${item.price}" onchange="menuItems[${index}].price=parseFloat(this.value)" />
-            <button onclick="removeMenuItem(${index})">Remove</button>
-        </div>
-    `).join('');
-}
-
-function removeMenuItem(index) {
-    menuItems.splice(index, 1);
-    renderMenu(menuItems);
-}
-
-    async function saveMenu() {
-      const names = document.querySelectorAll('.menu-item-name');
-      const prices = document.querySelectorAll('.menu-item-price');
-      const menu = [];
-
-      names.forEach((input, i) => {
-        const name = input.value.trim();
-        const price = parseFloat(prices[i].value.trim());
-        if (name && !isNaN(price)) menu.push({ name, price });
-      });
-
-      if (!menu.length) { alert("Add at least one menu item."); return; }
-
-      const restaurant = prompt("Enter your restaurant name:");
-      if (!restaurant) return;
-
-      const formData = new FormData();
-      formData.append("restaurantName", restaurant);
-      formData.append("menuItems", JSON.stringify(menu));
+    async function loginRestaurant() {
+      const code = document.getElementById('restaurantCode').value.trim();
+      if (!code) { showLoginError('Please enter the restaurant code'); return; }
 
       try {
-        const res = await fetch("http://localhost:8081/api/menu/upload", {
-          method: "POST",
-          body: formData
-        });
-        if (res.ok) alert("Menu saved successfully.");
-        else alert("Error saving menu: " + await res.text());
+        const res = await fetch('http://localhost:8081/api/restaurant/login?code=' + encodeURIComponent(code));
+        if (!res.ok) { showLoginError('Invalid code'); return; }
+        const data = await res.json();
+        restaurantName = data.name || '';
+        restaurantId = data.id || '';
+        if (!restaurantName) { showLoginError('Invalid response'); return; }
+        localStorage.setItem('restaurantName', restaurantName);
+        localStorage.setItem('restaurantId', restaurantId);
+        showLoginError('');
+        showMainContent();
       } catch (err) {
-        alert("Network error: " + err.message);
+        console.error(err);
+        showLoginError('Login failed. Please try again.');
       }
     }
 
-    // ====== UPI Scanner Section ======
+    function logoutRestaurant() {
+      localStorage.removeItem('restaurantName');
+      localStorage.removeItem('restaurantId');
+      restaurantName = '';
+      restaurantId = '';
+      window.location.href = 'login.html';
+    }
+
+    function addMenuItem(name = '', price = '') {
+      const container = document.getElementById('menuItemsContainer');
+      const row = document.createElement('div');
+      row.className = 'menu-item-row';
+      row.innerHTML = `
+        <input type="text" class="field" placeholder="Menu item name" value="${name}" />
+        <input type="number" class="field" placeholder="Price" value="${price}" min="0" step="0.5" />
+        <button type="button" class="btn" style="background:#6b7280;" onclick="removeMenuItemRow(this)">Remove</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function removeMenuItemRow(button) {
+      button.closest('.menu-item-row').remove();
+    }
+
+async function loadPreviousMenu(name){
+
+  const container =
+  document.getElementById(
+  "menuItemsContainer"
+  );
+
+  container.innerHTML = "";
+
+  if(!name){
+
+    addMenuItem();
+    return;
+
+  }
+
+  try{
+
+    const res =
+    await fetch(
+
+    "http://localhost:8081/api/menu/"
+    +
+
+    encodeURIComponent(name)
+
+    );
+
+    if(!res.ok){
+
+      addMenuItem();
+      return;
+
+    }
+
+    const data =
+    await res.json();
+
+    if(data.menuItems &&
+       data.menuItems.length){
+
+      data.menuItems.forEach(
+
+      item =>
+
+      addMenuItem(
+      item.name,
+      item.price
+      )
+
+      );
+
+    }
+
+    else{
+
+      addMenuItem();
+
+    }
+
+  }
+
+  catch(err){
+
+    console.error(err);
+
+    addMenuItem();
+
+  }
+
+}
+    async function saveMenu(){
+
+  if(!restaurantName){
+
+    alert("Please login first");
+    return;
+
+  }
+
+  const rows =
+  document.querySelectorAll(
+  ".menu-item-row"
+  );
+
+  const menu = [];
+
+  rows.forEach(row => {
+
+    const inputs =
+    row.querySelectorAll(
+    "input"
+    );
+
+    const name =
+    inputs[0].value.trim();
+
+    const price =
+    parseFloat(
+    inputs[1].value
+    );
+
+    if(name &&
+       !isNaN(price) &&
+       price >= 0){
+
+      menu.push({
+
+        name:
+        name,
+
+        price:
+        price
+
+      });
+
+    }
+
+  });
+
+  if(menu.length === 0){
+
+    alert(
+    "Add at least one valid item"
+    );
+
+    return;
+
+  }
+
+  const formData =
+  new FormData();
+
+  formData.append(
+  "restaurantName",
+  restaurantName
+  );
+
+  formData.append(
+  "menuItems",
+  JSON.stringify(menu)
+  );
+
+  try{
+
+    const res =
+    await fetch(
+
+    "http://localhost:8081/api/menu/upload",
+
+    {
+      method:"POST",
+      body: formData
+    }
+
+    );
+
+    if(res.ok){
+
+      alert(
+      "Menu saved successfully"
+      );
+
+      loadPreviousMenu(
+      restaurantName
+      );
+
+    }
+
+    else{
+
+      const error =
+      await res.text();
+
+      alert(
+      "Error saving menu: "
+      + error
+      );
+
+    }
+
+  }
+
+  catch(err){
+
+    alert(
+    "Network error: "
+    + err.message
+    );
+
+  }
+
+}
+
     function previewUPIImage() {
       const input = document.getElementById('upiScannerInput');
       const preview = document.getElementById('upiScannerPreview');
       preview.innerHTML = '';
-
-      if (input.files[0]) {
+      if (input.files && input.files[0]) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = e => {
           const img = document.createElement('img');
           img.src = e.target.result;
+          img.style.maxWidth = '100%';
           preview.appendChild(img);
         };
         reader.readAsDataURL(input.files[0]);
@@ -136,35 +395,106 @@ function removeMenuItem(index) {
     }
 
     async function saveUPIScanner() {
+      if (!restaurantName) { alert('Please login first'); return; }
       const input = document.getElementById('upiScannerInput');
-      const file = input.files[0];
-      if (!file) { alert('Please select a file.'); return; }
-
-      const restaurantName = prompt("Enter your restaurant name:");
-      if (!restaurantName) return;
-
+      if (!input.files || !input.files[0]) { alert('Select an image first'); return; }
       const formData = new FormData();
-      formData.append('restaurantName', restaurantName); // only restaurant name
-      formData.append('upiScreenshot', file);            // the file
-
+      formData.append('restaurantName', restaurantName);
+      formData.append('upiScreenshot', input.files[0]);
       try {
-        const res = await fetch('http://localhost:8081/api/scanner/upload', {
-          method: 'POST',
-          body: formData
-        });
-        if (res.ok) {
-          alert('UPI Screenshot uploaded successfully.');
-          input.value = '';
-          document.getElementById('upiScannerPreview').innerHTML = '';
-        } else {
-          const error = await res.text();
-          alert('Failed: ' + error);
-        }
-      } catch (e) {
-        alert('Upload error: ' + e.message);
+        const res = await fetch('http://localhost:8081/api/scanner/upload', { method: 'POST', body: formData });
+        if (res.ok) { alert('UPI screenshot uploaded'); input.value = ''; document.getElementById('upiScannerPreview').innerHTML = ''; } else { const error = await res.text(); alert('Upload failed: ' + error); }
+      } catch (err) { alert('Network error: ' + err.message); }
+    }
+
+    function createOrderCard(order) {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      card.innerHTML = `
+        <p><strong>Student:</strong> ${order.studentEmail || 'N/A'}</p>
+        <p><strong>Items:</strong> ${order.menuItemNames ? order.menuItemNames.join(', ') : 'N/A'}</p>
+        <p><strong>Qty:</strong> ${order.quantity || 'N/A'}</p>
+        <p><strong>Status:</strong> ${order.status || 'N/A'}</p>
+      `;
+      if (order.paymentScreenshot) {
+        const img = document.createElement('img');
+        img.src = `http://localhost:8081/uploads/scanners/${order.paymentScreenshot}`;
+        img.alt = 'Payment receipt';
+        img.style.maxWidth = '200px';
+        img.style.display = 'block';
+        img.style.marginTop = '8px';
+        card.appendChild(img);
+      }
+      if (order.status && order.status.toLowerCase() === 'pending') {
+        const actionBar = document.createElement('div');
+        actionBar.style.marginTop = '8px';
+        const accept = document.createElement('button');
+        accept.className = 'btn';
+        accept.style.background = '#16a34a';
+        accept.textContent = 'Accept';
+        accept.onclick = () => acceptOrder(order.id);
+        const reject = document.createElement('button');
+        reject.className = 'btn';
+        reject.style.background = '#dc2626';
+        reject.style.marginLeft = '8px';
+        reject.textContent = 'Reject';
+        reject.onclick = () => rejectOrder(order.id);
+        actionBar.appendChild(accept);
+        actionBar.appendChild(reject);
+        card.appendChild(actionBar);
+      }
+      return card;
+    }
+
+    function renderOrders(data) {
+      const orders = document.getElementById('orders');
+      orders.innerHTML = '';
+      if (!data || !data.length) { orders.innerHTML = '<p class="message">No orders found.</p>'; return; }
+      data.forEach(order => orders.appendChild(createOrderCard(order)));
+    }
+
+    async function loadPendingOrders() {
+      if (!restaurantName) return;
+      try {
+        const res = await fetch(`http://localhost:8081/api/admin/orders/pending?restaurantName=${encodeURIComponent(restaurantName)}`);
+        const data = await res.json();
+        renderOrders(data);
+      } catch (err) {
+        document.getElementById('orders').innerHTML = `<p class="message error">Failed loading pending orders: ${err.message}</p>`;
       }
     }
-  </script>
 
+    async function loadAcceptedOrders() {
+      if (!restaurantName) return;
+      try {
+        const res = await fetch(`http://localhost:8081/api/admin/orders/accepted?restaurantName=${encodeURIComponent(restaurantName)}`);
+        const data = await res.json();
+        renderOrders(data);
+      } catch (err) {
+        document.getElementById('orders').innerHTML = `<p class="message error">Failed loading accepted orders: ${err.message}</p>`;
+      }
+    }
+
+    async function acceptOrder(orderId) {
+      try {
+        const res = await fetch(`http://localhost:8081/api/admin/order/accept?orderId=${encodeURIComponent(orderId)}`, { method: 'PUT' });
+        if (res.ok) loadPendingOrders(); else alert('Accept failed');
+      } catch (err) { alert('Network error: ' + err.message); }
+    }
+
+    async function rejectOrder(orderId) {
+      try {
+        const res = await fetch(`http://localhost:8081/api/admin/order/reject?orderId=${encodeURIComponent(orderId)}`, { method: 'PUT' });
+        if (res.ok) loadPendingOrders(); else alert('Reject failed');
+      } catch (err) { alert('Network error: ' + err.message); }
+    }
+
+    window.onload = function() {
+      restaurantName = localStorage.getItem('restaurantName') || '';
+      restaurantId = localStorage.getItem('restaurantId') || '';
+      if (restaurantName) showMainContent();
+      else document.getElementById('loginSection').style.display = 'block';
+    };
+  </script>
 </body>
 </html>

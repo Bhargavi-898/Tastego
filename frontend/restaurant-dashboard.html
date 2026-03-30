@@ -1,27 +1,237 @@
-<h2>Pending Orders for Restaurant 't'</h2>
-<div id="orders"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Dashboard - Pending Orders</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+.container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+h1 { text-align: center; color: #333; margin-bottom: 10px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+.refresh-info { font-size: 0.9em; color: #666; }
+.restaurant-info { font-size: 0.95em; color: #444; margin-bottom: 20px; text-align: center; }
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.dashboard-panel { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 18px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+.panel-title { font-size: 1.1rem; font-weight: 600; color: #333; margin-bottom: 14px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+
+@media (max-width: 860px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+.order-card { 
+  border: 1px solid #ddd; 
+  padding: 20px; 
+  margin-bottom: 20px; 
+  border-radius: 8px; 
+  background: #fafafa;
+  transition: box-shadow 0.3s ease;
+}
+.order-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+
+.order-info { margin-bottom: 15px; }
+.order-info p { margin: 10px 0; font-size: 0.95em; }
+.order-info b { color: #333; }
+
+.payment-receipt { margin: 15px 0; }
+.payment-receipt h4 { margin-bottom: 10px; color: #555; }
+.payment-receipt img { max-width: 250px; border: 1px solid #ddd; border-radius: 5px; padding: 5px; background: white; }
+.image-error { color: #d9534f; font-size: 0.9em; }
+
+.action-buttons { margin-top: 15px; display: flex; gap: 10px; }
+.btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.9em; transition: all 0.3s ease; }
+.btn-accept { background: #28a745; color: white; }
+.btn-accept:hover { background: #218838; }
+.btn-reject { background: #dc3545; color: white; }
+.btn-reject:hover { background: #c82333; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.no-orders { text-align: center; padding: 40px 20px; color: #666; font-size: 1.1em; }
+.error-msg { background: #f8d7da; color: #721c24; padding: 20px; border-radius: 5px; border: 1px solid #f5c6cb; }
+.loading { text-align: center; padding: 20px; color: #666; }
+
+.status-badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 0.85em; font-weight: bold; }
+.status-pending { background: #fff3cd; color: #856404; }
+.status-accepted { background: #d4edda; color: #155724; }
+.status-rejected { background: #f8d7da; color: #721c24; }
+.status-in-progress { background: #cce5ff; color: #004085; }
+.status-completed { background: #d1ecf1; color: #0c5460; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Restaurant Dashboard</h1>
+    <span class="refresh-info">Auto-refreshes every 5 seconds</span>
+  </div>
+  <div id="restaurant-name" class="restaurant-info">Loading restaurant details...</div>
+
+  <div class="dashboard-grid">
+    <div id="pending-orders" class="dashboard-panel"><div class="loading">Loading pending orders...</div></div>
+    <div id="accepted-orders" class="dashboard-panel"><div class="loading">Loading accepted orders...</div></div>
+  </div>
+</div>
 
 <script>
-fetch("http://localhost:8080/api/orders/pending/t")
-  .then(res => res.json())
-  .then(data => {
-    const container = document.getElementById("orders");
-    data.forEach(order => {
-      const div = document.createElement("div");
-      div.innerHTML = `
-        <p><b>Student:</b> ${order.studentName}</p>
-        <p><b>Status:</b> ${order.status}</p>
-        <button onclick="verifyOrder('${order.studentName}')">✅ Verify</button><hr>
-      `;
-      container.appendChild(div);
-    });
-  });
 
-function verifyOrder(student) {
-  fetch(`http://localhost:8080/api/orders/verify?studentName=${student}&restaurantName=t`, {
-    method: "PUT"
-  })
-    .then(res => res.text())
-    .then(msg => alert(msg));
+// Get restaurant info from localStorage
+const restaurantId = localStorage.getItem("restaurantId") || null;
+const restaurantName = localStorage.getItem("restaurantName") || "Restaurant";
+
+// Load Pending Orders
+function loadPendingOrders(){
+  const info = document.getElementById("restaurant-name");
+  info.textContent = `Welcome, ${escapeHtml(restaurantName)} `;
+
+  if(!restaurantId){
+    info.textContent = "Restaurant not logged in. Please login first.";
+    document.getElementById("pending-orders").innerHTML = '<div class="error-msg"><p>Restaurant not logged in. Please login first.</p></div>';
+    document.getElementById("accepted-orders").innerHTML = '<div class="error-msg"><p>Restaurant not logged in. Please login first.</p></div>';
+    return;
+  }
+
+  // Load Pending Orders
+  fetch(`http://localhost:8081/api/restaurant/orders/${encodeURIComponent(restaurantId)}`)
+    .then(res => {
+      if(!res.ok) throw new Error("Server error: " + res.status);
+      return res.json();
+    })
+    .then(data => {
+      renderOrders(data, 'pending-orders', true);
+    })
+    .catch(error => {
+      document.getElementById("pending-orders").innerHTML = '<div class="error-msg"><p>Error loading pending orders: ' + error.message + '</p></div>';
+      console.error("Error:", error);
+    });
+
+  // Load Accepted Orders
+  fetch(`http://localhost:8081/api/restaurant/orders/accepted/${encodeURIComponent(restaurantId)}`)
+    .then(res => {
+      if(!res.ok) throw new Error("Server error: " + res.status);
+      return res.json();
+    })
+    .then(data => {
+      renderOrders(data, 'accepted-orders', false);
+    })
+    .catch(error => {
+      document.getElementById("accepted-orders").innerHTML = '<div class="error-msg"><p>Error loading accepted orders: ' + error.message + '</p></div>';
+      console.error("Error:", error);
+    });
 }
+
+// Render Orders
+function renderOrders(data, containerId, showActions){
+  const container = document.getElementById(containerId);
+  const titleText = containerId === 'pending-orders' ? 'Pending Orders' : 'Accepted Orders';
+  container.innerHTML = `<div class="panel-title">${titleText} (${Array.isArray(data) ? data.length : 0})</div>`;
+
+  if(!data || data.length === 0){
+    container.innerHTML += '<div class="no-orders"><p>No orders</p></div>';
+    return;
+  }
+
+  data.forEach(order => {
+    const orderCard = document.createElement("div");
+    orderCard.className = "order-card";
+    const menuItems = Array.isArray(order.menuItemNames) ? order.menuItemNames.join(", ") : (order.menuItemName || "Item");
+    const statusText = order.status ? order.status.toString() : 'Unknown';
+    const statusClass = statusText.toLowerCase().replace(/\s+/g, '-');
+
+    let actions = '';
+    if(showActions){
+      actions = `
+        <div class="action-buttons">
+          <button class="btn btn-accept" onclick="acceptOrder('${escapeHtml(order.id)}')">✅ Accept</button>
+          <button class="btn btn-reject" onclick="rejectOrder('${escapeHtml(order.id)}')">❌ Reject</button>
+        </div>
+      `;
+    } else {
+      actions = `<p><b>Token:</b> ${escapeHtml(order.tokenNumber || 'N/A')}</p>`;
+    }
+
+    orderCard.innerHTML = `
+      <div class="order-info">
+        <p><b>Student Name:</b> ${escapeHtml(order.studentName)}</p>
+        <p><b>Email:</b> ${escapeHtml(order.studentEmail)}</p>
+        <p><b>Menu Item(s):</b> ${escapeHtml(menuItems)}</p>
+        <p><b>Quantity:</b> ${escapeHtml(order.quantity)}</p>
+        <p><b>Total Amount:</b> ₹${escapeHtml(order.totalAmount)}</p>
+        <p><b>Status:</b> <span class="status-badge status-${escapeHtml(statusClass)}">${escapeHtml(statusText)}</span></p>
+        <p><b>Order ID:</b> ${escapeHtml(order.id)}</p>
+        ${actions}
+      </div>
+    `;
+    container.appendChild(orderCard);
+  });
+}
+
+// Accept Order
+function acceptOrder(orderId){
+  if(!confirm("Accept this order?")) return;
+
+  fetch(`http://localhost:8081/api/restaurant/accept?orderId=${encodeURIComponent(orderId)}`, { method: "POST" })
+    .then(res => {
+      if(!res.ok) throw new Error("Accept failed");
+      return res.text();
+    })
+    .then(() => {
+      alert("Order Accepted Successfully");
+      loadPendingOrders();
+    })
+    .catch(err => {
+      alert("Failed to accept order");
+      console.error("Error:", err);
+    });
+}
+
+// Reject Order
+function rejectOrder(orderId){
+  if(!confirm("Reject this order?")) return;
+
+  fetch(`http://localhost:8081/api/restaurant/reject?orderId=${encodeURIComponent(orderId)}`, { method: "POST" })
+    .then(res => {
+      if(!res.ok) throw new Error("Reject failed");
+      return res.text();
+    })
+    .then(msg => {
+      alert(msg || "Order Rejected Successfully");
+      loadPendingOrders();
+    })
+    .catch(err => {
+      alert("Failed to reject order");
+      console.error("Error:", err);
+    });
+}
+
+// Utility function to escape HTML
+function escapeHtml(text){
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+}
+
+// Handle image loading errors
+function handleImageError(img){
+  img.style.display = 'none';
+  const errorMsg = document.createElement('p');
+  errorMsg.className = 'image-error';
+  errorMsg.textContent = 'Payment receipt image not found';
+  img.parentNode.appendChild(errorMsg);
+}
+
+// Auto-refresh orders every 5 seconds
+setInterval(loadPendingOrders, 5000);
+
+// Load orders on page load
+window.onload = loadPendingOrders;
+
 </script>
+</body>
+</html>

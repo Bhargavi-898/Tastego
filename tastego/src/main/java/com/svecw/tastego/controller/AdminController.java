@@ -2,17 +2,18 @@ package com.svecw.tastego.controller;
 
 import java.time.LocalDate;
 import java.util.*;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.time.LocalDateTime;
 import com.svecw.tastego.model.Restaurant;
 import com.svecw.tastego.model.Order;
 import com.svecw.tastego.repository.RestaurantRepository;
 import com.svecw.tastego.repository.OrderRepository;
-
+import org.springframework.scheduling.annotation.Scheduled;
+import com.svecw.tastego.model.OrderTiming;
+import com.svecw.tastego.repository.OrderTimingRepository;
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/admin")
@@ -20,72 +21,290 @@ public class AdminController {
 
     @Autowired
     private RestaurantRepository restaurantRepository;
-
+@Autowired
+private OrderTimingRepository timingRepository;
     @Autowired
     private OrderRepository orderRepository;
+    
 
-    // Add restaurant with unique code
-    @PostMapping("/add-restaurant")
-    public ResponseEntity<?> addRestaurant(@RequestBody Restaurant restaurant) {
-        if (restaurant.getName() == null || restaurant.getDate() == null || restaurant.getAdminEmail() == null) {
-            return ResponseEntity.badRequest().body("Missing details");
-        }
+   @PostMapping("/add-restaurant")
+public ResponseEntity<?> addRestaurant(
+        @RequestBody Map<String, Object> request) {
 
-        // Generate unique 6-char code
-        String generatedCode = generateUniqueCode();
-        restaurant.setCode(generatedCode);
-        restaurantRepository.save(restaurant);
+    String name =
+            (String) request.get("name");
 
-        return ResponseEntity.ok(Collections.singletonMap("code", generatedCode));
+    String dateStr =
+            (String) request.get("date");
+
+    String adminEmail =
+            (String) request.get("adminEmail");
+
+    String providedCode =
+            (String) request.get("code");
+
+    // NEW — timing fields
+
+    String openTime =
+            (String) request.get("openTime");
+
+    String closeTime =
+            (String) request.get("closeTime");
+
+    if (name == null ||
+        dateStr == null ||
+        adminEmail == null ||
+        openTime == null ||
+        closeTime == null) {
+
+        return ResponseEntity
+                .badRequest()
+                .body("Missing details");
+
     }
 
-    // Generate unique code for a restaurant by admin email
+    LocalDate date;
+
+    try {
+
+        date =
+                LocalDate.parse(
+                        dateStr
+                );
+
+    }
+
+    catch (Exception e) {
+
+        return ResponseEntity
+                .badRequest()
+                .body(
+                "Invalid date format"
+                );
+
+    }
+
+    // Generate or use provided code
+
+    String finalCode;
+
+    if (providedCode != null &&
+        !providedCode.trim().isEmpty()) {
+
+        finalCode =
+                providedCode;
+
+    }
+
+    else {
+
+        finalCode =
+                generateUniqueCode();
+
+    }
+
+    // Create restaurant
+
+    Restaurant restaurant =
+            new Restaurant();
+
+    restaurant.setName(name);
+
+    restaurant.setDate(date);
+
+    restaurant.setAdminEmail(adminEmail);
+
+    restaurant.setCode(finalCode);
+
+    // NEW — save timing
+
+    restaurant.setOpenTime(openTime);
+
+    restaurant.setCloseTime(closeTime);
+
+    restaurantRepository.save(
+            restaurant
+    );
+
+    return ResponseEntity.ok(
+            Map.of(
+                    "message",
+                    "Restaurant added successfully",
+
+                    "code",
+                    finalCode
+            )
+    );
+        }
+
+@PostMapping("/update-timing")
+public ResponseEntity<?> updateTiming(
+        @RequestBody OrderTiming timing) {
+
+    OrderTiming existing;
+
+    if (timingRepository.count() > 0) {
+
+        existing =
+                timingRepository
+                .findAll()
+                .get(0);
+
+        existing.setOpenTime(
+                timing.getOpenTime()
+        );
+
+        existing.setCloseTime(
+                timing.getCloseTime()
+        );
+
+    } else {
+
+        existing = timing;
+
+    }
+
+    timingRepository.save(existing);
+
+    return ResponseEntity.ok(
+            "Timing updated successfully"
+    );
+}
+    @GetMapping("/orders/accepted")
+public ResponseEntity<?> getAcceptedOrders(
+        @RequestParam String restaurantName) {
+
+    try {
+
+        LocalDate today =
+                LocalDate.now();
+
+        List<Order> orders =
+                orderRepository
+                        .findByRestaurantNameAndDate(
+                                restaurantName,
+                                today
+                        );
+
+        if (orders == null || orders.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        List<Order> accepted =
+                orders.stream()
+                        .filter(o ->
+                                "ACCEPTED".equalsIgnoreCase(
+                                        o.getStatus()
+                                )
+                        )
+                        .toList();
+
+        return ResponseEntity.ok(accepted);
+
+    }
+
+    catch (Exception e) {
+
+        e.printStackTrace();
+
+        return ResponseEntity.ok(List.of());
+
+    }
+}
+@GetMapping("/timing")
+public ResponseEntity<?> getTiming() {
+
+    if (timingRepository.count() == 0) {
+
+        return ResponseEntity.ok(
+                "NOT_SET"
+        );
+
+    }
+
+    OrderTiming timing =
+            timingRepository
+            .findAll()
+            .get(0);
+
+    return ResponseEntity.ok(timing);
+}
+    // Keep this as an on-demand admin endpoint if needed for troubleshooting.
+    @GetMapping("/cleanup-expired-orders")
+    public ResponseEntity<String> cleanupExpiredOrders(){
+
+        LocalDate today = LocalDate.now();
+
+        orderRepository.deleteByDateBefore(today);
+        restaurantRepository.deleteByDateBefore(today);
+
+        System.out.println("Old restaurant orders and restaurants deleted");
+
+        return ResponseEntity.ok("Expired orders and restaurants cleaned");
+    }
+
     @PostMapping("/generate-code")
-    public ResponseEntity<?> generateCode(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        if (email == null || email.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+    public ResponseEntity<?> generateCode(@RequestBody Map<String, String> request) {
+        String adminEmail = request.get("email");
+
+        if (adminEmail == null) {
+            return ResponseEntity.badRequest().body("Admin email required");
         }
 
-        List<Restaurant> restaurants = restaurantRepository.findAllByAdminEmail(email);
-        if (restaurants.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "No restaurants found for this email"));
-        }
+        String generatedCode = generateUniqueCode();
 
-        Restaurant restaurant = restaurants.get(0); // Take the first one or implement proper selection logic
-        String newCode = generateUniqueCode();
-        restaurant.setCode(newCode);
-        restaurantRepository.save(restaurant);
-
-        return ResponseEntity.ok(Map.of("code", newCode));
+        return ResponseEntity.ok(Map.of(
+                "message", "Code generated successfully",
+                "code", generatedCode
+        ));
     }
 
-    // Restaurant login
     @PostMapping("/restaurant/login")
     public ResponseEntity<?> loginRestaurant(@RequestBody Map<String, String> credentials) {
         String name = credentials.get("name");
         String code = credentials.get("code");
 
         if (name == null || code == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Name and code are required"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Name and code required"));
         }
 
-        Restaurant restaurant = restaurantRepository.findByNameAndCode(name, code);
-        if (restaurant != null) {
-            return ResponseEntity.ok(restaurant);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid restaurant name or code"));
+        Optional<Restaurant> restaurant = restaurantRepository.findByNameAndCode(name, code);
+
+        if (restaurant.isPresent()) {
+            return ResponseEntity.ok(restaurant.get());
         }
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Invalid restaurant name or code"));
     }
 
     @GetMapping("/restaurant/today")
     public ResponseEntity<?> getTodayRestaurants() {
         LocalDate today = LocalDate.now();
         List<Restaurant> restaurants = restaurantRepository.findByDate(today);
+
         if (restaurants.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No restaurant assigned today");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("No restaurant assigned today");
         }
+
         return ResponseEntity.ok(restaurants);
+    }
+
+    @GetMapping("/restaurants/upcoming")
+    public ResponseEntity<?> getUpcomingRestaurants() {
+        LocalDate today = LocalDate.now();
+        List<Restaurant> allRestaurants = restaurantRepository.findAll();
+        List<Restaurant> upcoming = new ArrayList<>();
+
+        for (Restaurant r : allRestaurants) {
+            if (r.getDate() != null && !r.getDate().isBefore(today)) {
+                upcoming.add(r);
+            }
+        }
+
+        return ResponseEntity.ok(upcoming);
     }
 
     @GetMapping("/orders/today")
@@ -102,7 +321,8 @@ public class AdminController {
             List<Order> orders = orderRepository.findByDate(parsedDate);
             return ResponseEntity.ok(orders);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Invalid date format. Use YYYY-MM-DD.");
+            return ResponseEntity.badRequest()
+                    .body("Invalid date format. Use YYYY-MM-DD");
         }
     }
 
@@ -112,21 +332,169 @@ public class AdminController {
         List<Restaurant> allRestaurants = restaurantRepository.findAll();
 
         for (Restaurant rest : allRestaurants) {
-            if (rest.getDate() != null && !today.equals(rest.getDate()) && rest.getCode() != null) {
-                rest.setCode(null);
-                restaurantRepository.save(rest);
+            if (rest.getDate() != null && rest.getDate().isBefore(today)) {
+                restaurantRepository.delete(rest);
             }
         }
 
-        return ResponseEntity.ok("Expired codes cleared.");
+        return ResponseEntity.ok("Expired restaurants removed");
     }
 
-    // Utility method to generate a unique 6-character code
+  @GetMapping("/orders/accepted-all")
+public ResponseEntity<?> getAllAcceptedOrders() {
+
+    LocalDate today =
+            LocalDate.now();
+
+    List<Order> orders =
+            orderRepository
+            .findByStatusAndDate(
+                    "ACCEPTED",
+                    today
+            );
+
+    return ResponseEntity.ok(
+            orders
+    );
+
+}
+@Scheduled(cron = "0 0 0 * * ?")
+public void autoDeletePreviousDayData() {
+
+    try {
+
+        LocalDate today =
+                LocalDate.now();
+
+        // Delete yesterday's orders
+
+        orderRepository
+                .deleteByDateBefore(
+                        today
+                );
+
+        // Delete yesterday's restaurants
+
+        restaurantRepository
+                .deleteByDateBefore(
+                        today
+                );
+
+        System.out.println(
+        "Old restaurant and order data deleted automatically"
+        );
+
+    }
+
+    catch (Exception e) {
+
+        e.printStackTrace();
+
+    }
+
+}
+    @PutMapping("/order/accept")
+    public ResponseEntity<?> acceptOrder(@RequestParam String orderId) {
+        try {
+            Optional<Order> optional = orderRepository.findById(orderId);
+
+            if (optional.isEmpty()) {
+                return ResponseEntity.badRequest().body("Order not found");
+            }
+
+            Order order = optional.get();
+            int token = new Random().nextInt(900) + 100;
+
+            order.setStatus("ACCEPTED");
+            order.setTokenNumber(String.valueOf(token));
+            order.setAcknowledged(true);
+            order.setOrderTime(LocalDateTime.now());
+
+            orderRepository.save(order);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Order accepted successfully");
+            response.put("tokenNumber", String.valueOf(token));
+            response.put("orderId", order.getId());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("Error accepting order");
+        }
+    }
+
+    @PutMapping("/order/reject")
+    public ResponseEntity<?> rejectOrder(@RequestParam String orderId) {
+        Optional<Order> optional = orderRepository.findById(orderId);
+
+        if (optional.isEmpty()) {
+            return ResponseEntity.badRequest().body("Order not found");
+        }
+
+        Order order = optional.get();
+        order.setStatus("REJECTED");
+        orderRepository.save(order);
+
+        return ResponseEntity.ok("Order rejected");
+    }
+@GetMapping("/orders/pending")
+public ResponseEntity<?> getPendingOrders(
+        @RequestParam String restaurantName) {
+
+    try {
+
+        // Get all orders for this restaurant
+        List<Order> orders =
+                orderRepository
+                        .findByRestaurantName(
+                                restaurantName
+                        );
+
+        if (orders == null || orders.isEmpty()) {
+
+            return ResponseEntity.ok(
+                    List.of()
+            );
+
+        }
+
+        // Filter only pending orders
+        List<Order> pending =
+                orders.stream()
+                        .filter(o ->
+                                "PENDING".equalsIgnoreCase(
+                                        o.getStatus()
+                                )
+                        )
+                        .toList();
+
+        return ResponseEntity.ok(
+                pending
+        );
+
+    }
+
+    catch (Exception e) {
+
+        e.printStackTrace();
+
+        return ResponseEntity.ok(
+                List.of()
+        );
+
+    }
+}
     private String generateUniqueCode() {
         String code;
         do {
-            code = UUID.randomUUID().toString().replaceAll("-", "").substring(0, 6).toUpperCase();
+            code = UUID.randomUUID().toString()
+                    .replace("-", "")
+                    .substring(0, 6)
+                    .toUpperCase();
         } while (restaurantRepository.existsByCode(code));
+
         return code;
     }
 }

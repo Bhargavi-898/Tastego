@@ -1,185 +1,627 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - TASTE GO</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 20px;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - TASTE GO</title>
 
-    h1 {
-      text-align: center;
-      color: #ff4d4d;
-    }
+<style>
 
-    .admin-container {
-      max-width: 600px;
-      margin: 0 auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
+body{
+font-family: Arial;
+background:#f4f4f4;
+padding:20px;
+margin-left: 270px;
+}
+#sidePanel {
+position: fixed;
+left: 0;
+top: 0;
+width: 250px;
+height: 100%;
+background: #333;
+color: white;
+padding: 20px;
+box-sizing: border-box;
+display: flex;
+flex-direction: column;
+}
+.side-btn {
+width: 100%;
+padding: 12px;
+margin: 10px 0;
+border: none;
+border-radius: 5px;
+font-size: 16px;
+cursor: pointer;
+background: #555;
+color: white;
+}
+.side-btn:hover {
+background: #777;
+}
+.order-card{
+background:#fff;
+padding:15px;
+border-radius:8px;
+margin-bottom:10px;
+box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+h1{
+text-align:center;
+color:#ff4d4d;
+}
 
-    .admin-container h3 {
-      color: #333;
-    }
+.admin-container{
+max-width:600px;
+margin:auto;
+background:white;
+padding:20px;
+border-radius:10px;
+box-shadow:0 2px 4px rgba(0,0,0,0.2);
+}
 
-    .admin-container input,
-    .admin-container button {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 16px;
-    }
+input,button{
+width:100%;
+padding:10px;
+margin:10px 0;
+border-radius:5px;
+border:1px solid #ccc;
+font-size:16px;
+}
 
-    .admin-container button {
-      background-color: #ff4d4d;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
+button{
+background:#ff4d4d;
+color:white;
+cursor:pointer;
+}
 
-    .admin-container button:hover {
-      background-color: #cc0000;
-    }
+button:hover{
+background:#cc0000;
+}
 
-    #codeDisplay,
-    #dateDisplay {
-      font-weight: bold;
-      color: #333;
-      padding-top: 10px;
-    }
+/* Upcoming restaurants section */
 
-    .date-info {
-      margin-top: 20px;
-      font-style: italic;
-    }
+.restaurant-list{
+margin-top:20px;
+display:none;
+}
 
-    .restaurant-date-block {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
-      padding-top: 10px;
-      border-top: 1px solid #ccc;
-    }
+.restaurant-card{
+background:#fff;
+padding:15px;
+border-radius:8px;
+margin-bottom:10px;
+box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
 
-    .restaurant-date-block span {
-      font-weight: bold;
-      color: #333;
-    }
-
-  </style>
+</style>
 </head>
+
 <body>
-  <h1>Admin Panel</h1>
+<div id="sidePanel">
+<button class="side-btn" onclick="showAddRestaurant()">🏠 Add Restaurant</button>
+<button class="side-btn" onclick="showAcceptedOrders()">View Accepted Orders</button>
+<button class="side-btn" onclick="showUpcomingRestaurants()">📅 View Upcoming Restaurants</button>
+<button class="side-btn" onclick="showTimingSection()">
+⏰ Set Order Timing
+</button>
+  <button class="side-btn" onclick="logout()">🚪 Logout</button>
 
-  <div class="admin-container">
-    <h3>Add New Restaurant</h3>
-    <input type="text" placeholder="Enter Restaurant Name" id="restaurantName">
-    <label for="restaurantDate">Select Date:</label>
-    <input type="date" id="restaurantDate">
-    <button onclick="addRestaurant()">Add Restaurant</button>
+</div>
+<h1>Admin Panel</h1>
 
-    <h3>Generate Weekly Code</h3>
-    <button onclick="generateCode()">Generate Code</button>
-    <p id="codeDisplay"></p>
-    <p id="dateDisplay"></p>
-  </div>
+<div
+id="accepted-orders-section"
+style="
+margin-top:15px;
+border:1px solid #ccc;
+padding:10px;
+display:none;
+">
 
-  <div class="date-info">
-    <div class="restaurant-date-block">
-      <span id="restaurantDateDisplay"></span>
-      <span id="uploadDate"></span>
-    </div>
-  </div>
+<h3>Accepted Student Orders</h3>
 
-  <script>
-    function formatDate(date) {
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
+<div id="accepted-orders">
+Click button to view orders
+</div>
+
+</div>
+
+<div class="admin-container" id="admin-container">
+
+<h3>Add New Restaurant</h3>
+
+<input type="text" placeholder="Enter Restaurant Name" id="restaurantName">
+
+<label>Select Date:</label>
+<input type="date" id="restaurantDate">
+
+<button onclick="addRestaurant()">Add Restaurant</button>
+
+<h3>Generate Weekly Code</h3>
+
+<button onclick="generateCode()">Generate Code</button>
+
+<p id="codeDisplay"></p>
+
+</div>
+
+<div id="restaurantList" class="restaurant-list">
+
+<h3>Upcoming Restaurants</h3>
+
+<div id="restaurantContainer"></div>
+
+</div>
+
+
+<div
+id="timing-section"
+class="admin-container"
+style="display:none;"
+>
+
+<h3>Set Daily Order Timing</h3>
+
+<label>Open Time</label>
+
+<input
+type="time"
+id="openTime"
+required
+>
+
+<label>Close Time</label>
+
+<input
+type="time"
+id="closeTime"
+required
+>
+
+<button
+onclick="saveTiming()"
+class="btn-primary"
+>
+Save Timing
+</button>
+
+<p id="timingStatus"></p>
+
+</div>
+<script>
+
+const API = "http://localhost:8081/api/admin";
+let generatedCode = "";
+/* Show sections */
+
+function showTimingSection(){
+
+    document.getElementById(
+    "admin-container"
+    ).style.display = "none";
+
+    document.getElementById(
+    "accepted-orders-section"
+    ).style.display = "none";
+
+    document.getElementById(
+    "restaurantList"
+    ).style.display = "none";
+
+    document.getElementById(
+    "timing-section"
+    ).style.display = "block";
+
+}
+
+function showAcceptedOrders() {
+
+    document.getElementById(
+    "admin-container"
+    ).style.display = "none";
+
+    document.getElementById(
+    "accepted-orders-section"
+    ).style.display = "block";
+
+    document.getElementById(
+    "restaurantList"
+    ).style.display = "none";
+
+    document.getElementById(
+    "timing-section"
+    ).style.display = "none";
+
+    loadAcceptedStudents();
+
+}
+function showAddRestaurant(){
+
+    document.getElementById(
+    "admin-container"
+    ).style.display = "block";
+
+    document.getElementById(
+    "accepted-orders-section"
+    ).style.display = "none";
+
+    document.getElementById(
+    "restaurantList"
+    ).style.display = "none";
+
+    document.getElementById(
+    "timing-section"
+    ).style.display = "none";
+
+}
+function showUpcomingRestaurants() {
+
+    document.getElementById(
+    "admin-container"
+    ).style.display = "none";
+
+    document.getElementById(
+    "accepted-orders-section"
+    ).style.display = "none";
+
+    document.getElementById(
+    "restaurantList"
+    ).style.display = "block";
+
+    document.getElementById(
+    "timing-section"
+    ).style.display = "none";
+
+    loadRestaurants();
+
+}
+
+/* Toggle upcoming restaurants */
+
+function removed_toggleRestaurants() {
+    const list = document.getElementById("restaurantList");
+    if (list.style.display === "none") {
+        list.style.display = "block";
+        loadRestaurants();
+    } else {
+        list.style.display = "none";
     }
+}
+
+function logout(){
+  
+  window.location.href = "login.html";
+}
+/* Add restaurant */
+
 function addRestaurant() {
-  const restaurantName = document.getElementById('restaurantName').value.trim();
-  const restaurantDate = document.getElementById('restaurantDate').value;
-  const email = localStorage.getItem("adminEmail"); // ✅ email fetched from login
 
-  if (!restaurantName || !restaurantDate) {
-    alert("Please fill all fields.");
-    return;
-  }
+    const name =
+    document.getElementById("restaurantName").value;
 
-  if (!email) {
-    alert("Admin email not found. Please log in again.");
-    return;
-  }
+    const date =
+    document.getElementById("restaurantDate").value;
 
-  fetch('http://localhost:8081/api/admin/add-restaurant', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      name: restaurantName,
-      date: restaurantDate,
-      adminEmail: email // ✅ used from localStorage
+    const email =
+    localStorage.getItem("adminEmail");
+
+    if (!name || !date) {
+        alert("Fill all fields");
+        return;
+    }
+
+    if (!generatedCode) {
+        alert("Generate code first");
+        return;
+    }
+
+    fetch(API + "/add-restaurant", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+
+            name: name,
+            date: date,
+            adminEmail: email,
+            code: generatedCode
+
+        })
+
     })
-  })
     .then(res => res.json())
     .then(data => {
-      alert(data.message || "Restaurant added successfully!");
-      document.getElementById('restaurantName').value = '';
-      document.getElementById('restaurantDate').value = '';
+
+        alert("Restaurant Added Successfully");
+
+        generatedCode = "";
+
+        document.getElementById("codeDisplay").innerText = "";
+
+        document.getElementById("restaurantName").value = "";
+
+        document.getElementById("restaurantDate").value = "";
+
     })
     .catch(err => {
-      console.error("Fetch error:", err);
-      alert("Error adding restaurant.");
+
+        console.error(err);
+
+        alert("Error adding restaurant");
+
     });
+
 }
+async function saveTiming(){
 
+  const openTime =
+  document.getElementById(
+  "openTime"
+  ).value;
 
-async function generateCode() {
-  const email = localStorage.getItem("adminEmail");
+  const closeTime =
+  document.getElementById(
+  "closeTime"
+  ).value;
 
-  if (!email) {
-    alert("Admin email not found. Please log in again.");
+  if(!openTime || !closeTime){
+
+    alert(
+    "Please select both times"
+    );
+
     return;
+
   }
 
-  try {
-    const res = await fetch("http://localhost:8081/api/admin/generate-code", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+  try{
+
+    const res =
+    await fetch(
+
+    API + "/update-timing",
+
+    {
+
+      method:"POST",
+
+      headers:{
+        "Content-Type":
+        "application/json"
       },
-      body: JSON.stringify({ email }) // ✅ send email in object form
+
+      body: JSON.stringify({
+
+        openTime,
+        closeTime
+
+      })
+
+    }
+
+    );
+
+    const msg =
+    await res.text();
+
+    document.getElementById(
+    "timingStatus"
+    ).innerText =
+    msg;
+
+  }
+
+  catch(err){
+
+    alert(
+    "Error updating timing"
+    );
+
+  }
+
+}
+
+async function loadAcceptedStudents() {
+
+  try{
+
+    const res =
+    await fetch(
+    "http://localhost:8081/api/admin/orders/accepted-all"
+    );
+
+    const data =
+    await res.json();
+
+    const container =
+    document.getElementById(
+    "accepted-orders"
+    );
+
+    container.innerHTML =
+    "";
+
+    if(
+      !data ||
+      data.length === 0
+    ){
+
+      container.innerHTML =
+      "No accepted orders";
+
+      return;
+
+    }
+
+    data.forEach(order => {
+
+      const div =
+      document.createElement(
+      "div"
+      );
+
+      div.style.border =
+      "1px solid #ccc";
+
+      div.style.padding =
+      "10px";
+
+      div.style.marginBottom =
+      "10px";
+
+      div.innerHTML = `
+
+
+
+<p>
+<b>Email:</b>
+${order.studentEmail}
+</p>
+
+<p>
+<b>Restaurant:</b>
+${order.restaurantName}
+</p>
+
+<p>
+<b>Token Number:</b>
+${order.tokenNumber}
+</p>
+
+<p>
+<b>Date:</b>
+${order.date}
+</p>
+
+`;
+
+      container.appendChild(
+      div
+      );
+
     });
 
-    const data = await res.json();
-
-    if (res.ok) {
-      document.getElementById("codeDisplay").innerText = `Generated Code: ${data.code}`;
-      document.getElementById("dateDisplay").innerText = `Code generated on: ${new Date().toLocaleDateString()}`;
-      alert("✅ Weekly code generated successfully!");
-    } else {
-      alert("❌ Failed to generate code: " + (data.error || "Unknown error"));
-    }
-  } catch (err) {
-    console.error("Error:", err);
-    alert("❌ Failed to generate code due to network or server error.");
   }
+
+  catch(err){
+
+    console.error(err);
+
+  }
+
+}
+const openTime =
+document.getElementById(
+"openTime"
+).value;
+
+const closeTime =
+document.getElementById(
+"closeTime"
+).value;
+
+formData.append(
+"openTime",
+openTime
+);
+
+formData.append(
+"closeTime",
+closeTime
+);
+function openOrdersDashboard(){
+window.open("admin-orders.html","_blank");
+}
+/* Generate code */
+
+async function generateCode(){
+
+  try{
+
+    const email =
+    localStorage.getItem("adminEmail");
+
+    const res =
+    await fetch(API + "/generate-code", {
+
+      method:"POST",
+
+      headers:{
+        "Content-Type":"application/json"
+      },
+
+      body: JSON.stringify({
+        email: email
+      })
+
+    });
+
+    const data =
+    await res.json();
+
+    generatedCode =
+      data.code ||
+      data.generatedCode ||
+      data.newCode;
+
+    document.getElementById(
+      "codeDisplay"
+    ).innerText =
+      "Generated Code: " + generatedCode;
+
+  }
+
+  catch(error){
+
+    console.error(error);
+
+  }
+
 }
 
 
-  </script>
+
+/* Load restaurants */
+
+async function loadRestaurants(){
+
+const res=await fetch(API+"/restaurants/upcoming");
+
+const restaurants=await res.json();
+
+const container=document.getElementById("restaurantContainer");
+
+container.innerHTML="";
+
+restaurants.forEach(r=>{
+
+const card=document.createElement("div");
+
+card.className="restaurant-card";
+
+card.innerHTML=`
+
+<b>${r.name}</b><br>
+Date : ${r.date}<br>
+Code : ${r.code || "Not Generated"}
+
+`;
+
+container.appendChild(card);
+
+});
+
+}
+fetch(
+"http://localhost:8081/api/admin/cleanup-old-orders"
+);
+</script>
+
 </body>
 </html>
