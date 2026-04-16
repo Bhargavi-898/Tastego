@@ -25,4 +25,14 @@ public class UserService {
         }
         return null;
     }
+
+    public boolean updatePassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email);
+        if (user != null) {
+            user.setPassword(newPassword);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
 }

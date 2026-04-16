@@ -124,8 +124,7 @@ function loadPendingOrders(){
 // Render Orders
 function renderOrders(data, containerId, showActions){
   const container = document.getElementById(containerId);
-  const titleText = containerId === 'pending-orders' ? 'Pending Orders' : 'Accepted Orders';
-  container.innerHTML = `<div class="panel-title">${titleText} (${Array.isArray(data) ? data.length : 0})</div>`;
+  container.innerHTML = `<h2>${containerId === 'pending-orders' ? 'Pending Orders' : 'Accepted Orders'}</h2>`;
 
   if(!data || data.length === 0){
     container.innerHTML += '<div class="no-orders"><p>No orders</p></div>';
