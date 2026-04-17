@@ -192,7 +192,7 @@ Save Timing
 </div>
 <script>
 
-const API = "http://localhost:8081/api/admin";
+const API = "https://tastego-production.up.railway.app/api/admin";
 let generatedCode = "";
 /* Show sections */
 
@@ -433,7 +433,7 @@ async function loadAcceptedStudents() {
 
     const res =
     await fetch(
-    "http://localhost:8081/api/admin/orders/accepted-all"
+    "https://tastego-production.up.railway.app/api/admin/orders/accepted-all"
     );
 
     const data =
@@ -619,7 +619,7 @@ container.appendChild(card);
 
 }
 fetch(
-"http://localhost:8081/api/admin/cleanup-old-orders"
+"https://tastego-production.up.railway.app/api/admin/cleanup-old-orders"
 );
 </script>
 

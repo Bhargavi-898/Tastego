@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -70,10 +70,10 @@
 </head>
 <body>
   <div id="sidePanel">
-    <button class="side-btn" onclick="showSection('menuSection')">🍽️ Menu Upload</button>
-    <button class="side-btn" onclick="showSection('upiSection')">📸 UPI Scanner</button>
-    <button class="side-btn" onclick="showSection('ordersSection')">🧾 Orders</button>
-    <button class="side-btn" onclick="logoutRestaurant()">🔓 Logout</button>
+    <button class="side-btn" onclick="showSection('menuSection')">??? Menu Upload</button>
+    <button class="side-btn" onclick="showSection('upiSection')">?? UPI Scanner</button>
+    <button class="side-btn" onclick="showSection('ordersSection')">?? Orders</button>
+    <button class="side-btn" onclick="logoutRestaurant()">?? Logout</button>
   </div>
 
   <h1 class="page-header">Restaurant Menu Management</h1>
@@ -144,7 +144,7 @@
       if (!code) { showLoginError('Please enter the restaurant code'); return; }
 
       try {
-        const res = await fetch('http://localhost:8081/api/restaurant/login?code=' + encodeURIComponent(code));
+        const res = await fetch('https://tastego-production.up.railway.app/api/restaurant/login?code=' + encodeURIComponent(code));
         if (!res.ok) { showLoginError('Invalid code'); return; }
         const data = await res.json();
         restaurantName = data.name || '';
@@ -205,7 +205,7 @@ async function loadPreviousMenu(name){
     const res =
     await fetch(
 
-    "http://localhost:8081/api/menu/"
+    "https://tastego-production.up.railway.app/api/menu/"
     +
 
     encodeURIComponent(name)
@@ -332,7 +332,7 @@ async function loadPreviousMenu(name){
     const res =
     await fetch(
 
-    "http://localhost:8081/api/menu/upload",
+    "https://tastego-production.up.railway.app/api/menu/upload",
 
     {
       method:"POST",
@@ -402,7 +402,7 @@ async function loadPreviousMenu(name){
       formData.append('restaurantName', restaurantName);
       formData.append('upiScreenshot', input.files[0]);
       try {
-        const res = await fetch('http://localhost:8081/api/scanner/upload', { method: 'POST', body: formData });
+        const res = await fetch('https://tastego-production.up.railway.app/api/scanner/upload', { method: 'POST', body: formData });
         if (res.ok) { alert('UPI screenshot uploaded'); input.value = ''; document.getElementById('upiScannerPreview').innerHTML = ''; } else { const error = await res.text(); alert('Upload failed: ' + error); }
       } catch (err) { alert('Network error: ' + err.message); }
     }
@@ -418,7 +418,7 @@ async function loadPreviousMenu(name){
       `;
       if (order.paymentScreenshot) {
         const img = document.createElement('img');
-        img.src = `http://localhost:8081/uploads/scanners/${order.paymentScreenshot}`;
+        img.src = `https://tastego-production.up.railway.app/uploads/scanners/${order.paymentScreenshot}`;
         img.alt = 'Payment receipt';
         img.style.maxWidth = '200px';
         img.style.display = 'block';
@@ -456,7 +456,7 @@ async function loadPreviousMenu(name){
     async function loadPendingOrders() {
       if (!restaurantName) return;
       try {
-        const res = await fetch(`http://localhost:8081/api/admin/orders/pending?restaurantName=${encodeURIComponent(restaurantName)}`);
+        const res = await fetch(`https://tastego-production.up.railway.app/api/admin/orders/pending?restaurantName=${encodeURIComponent(restaurantName)}`);
         const data = await res.json();
         renderOrders(data);
       } catch (err) {
@@ -467,7 +467,7 @@ async function loadPreviousMenu(name){
     async function loadAcceptedOrders() {
       if (!restaurantName) return;
       try {
-        const res = await fetch(`http://localhost:8081/api/admin/orders/accepted?restaurantName=${encodeURIComponent(restaurantName)}`);
+        const res = await fetch(`https://tastego-production.up.railway.app/api/admin/orders/accepted?restaurantName=${encodeURIComponent(restaurantName)}`);
         const data = await res.json();
         renderOrders(data);
       } catch (err) {
@@ -477,14 +477,14 @@ async function loadPreviousMenu(name){
 
     async function acceptOrder(orderId) {
       try {
-        const res = await fetch(`http://localhost:8081/api/admin/order/accept?orderId=${encodeURIComponent(orderId)}`, { method: 'PUT' });
+        const res = await fetch(`https://tastego-production.up.railway.app/api/admin/order/accept?orderId=${encodeURIComponent(orderId)}`, { method: 'PUT' });
         if (res.ok) loadPendingOrders(); else alert('Accept failed');
       } catch (err) { alert('Network error: ' + err.message); }
     }
 
     async function rejectOrder(orderId) {
       try {
-        const res = await fetch(`http://localhost:8081/api/admin/order/reject?orderId=${encodeURIComponent(orderId)}`, { method: 'PUT' });
+        const res = await fetch(`https://tastego-production.up.railway.app/api/admin/order/reject?orderId=${encodeURIComponent(orderId)}`, { method: 'PUT' });
         if (res.ok) loadPendingOrders(); else alert('Reject failed');
       } catch (err) { alert('Network error: ' + err.message); }
     }

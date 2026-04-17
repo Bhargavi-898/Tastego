@@ -93,7 +93,7 @@ function loadPendingOrders(){
   }
 
   // Load Pending Orders
-  fetch(`http://localhost:8081/api/restaurant/orders/${encodeURIComponent(restaurantId)}`)
+  fetch(`https://tastego-production.up.railway.app/api/restaurant/orders/${encodeURIComponent(restaurantId)}`)
     .then(res => {
       if(!res.ok) throw new Error("Server error: " + res.status);
       return res.json();
@@ -107,7 +107,7 @@ function loadPendingOrders(){
     });
 
   // Load Accepted Orders
-  fetch(`http://localhost:8081/api/restaurant/orders/accepted/${encodeURIComponent(restaurantId)}`)
+  fetch(`https://tastego-production.up.railway.app/api/restaurant/orders/accepted/${encodeURIComponent(restaurantId)}`)
     .then(res => {
       if(!res.ok) throw new Error("Server error: " + res.status);
       return res.json();
@@ -170,7 +170,7 @@ function renderOrders(data, containerId, showActions){
 function acceptOrder(orderId){
   if(!confirm("Accept this order?")) return;
 
-  fetch(`http://localhost:8081/api/restaurant/accept?orderId=${encodeURIComponent(orderId)}`, { method: "POST" })
+  fetch(`https://tastego-production.up.railway.app/api/restaurant/accept?orderId=${encodeURIComponent(orderId)}`, { method: "POST" })
     .then(res => {
       if(!res.ok) throw new Error("Accept failed");
       return res.text();
@@ -189,7 +189,7 @@ function acceptOrder(orderId){
 function rejectOrder(orderId){
   if(!confirm("Reject this order?")) return;
 
-  fetch(`http://localhost:8081/api/restaurant/reject?orderId=${encodeURIComponent(orderId)}`, { method: "POST" })
+  fetch(`https://tastego-production.up.railway.app/api/restaurant/reject?orderId=${encodeURIComponent(orderId)}`, { method: "POST" })
     .then(res => {
       if(!res.ok) throw new Error("Reject failed");
       return res.text();
