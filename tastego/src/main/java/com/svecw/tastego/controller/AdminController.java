@@ -27,115 +27,65 @@ private OrderTimingRepository timingRepository;
     private OrderRepository orderRepository;
     
 
-   @PostMapping("/add-restaurant")
-public ResponseEntity<?> addRestaurant(
-        @RequestBody Map<String, Object> request) {
+    @PostMapping("/add-restaurant")
+    public ResponseEntity<?> addRestaurant(
+            @RequestBody Map<String, Object> request) {
 
-    String name =
-            (String) request.get("name");
+        String name = (String) request.get("name");
+        String dateStr = (String) request.get("date");
+        String adminEmail = (String) request.get("adminEmail");
+        String providedCode = (String) request.get("code");
 
-    String dateStr =
-            (String) request.get("date");
+        // OPTIONAL timing fields
+        String openTime = (String) request.get("openTime");
+        String closeTime = (String) request.get("closeTime");
 
-    String adminEmail =
-            (String) request.get("adminEmail");
-
-    String providedCode =
-            (String) request.get("code");
-
-    // NEW — timing fields
-
-    String openTime =
-            (String) request.get("openTime");
-
-    String closeTime =
-            (String) request.get("closeTime");
-
-    if (name == null ||
-        dateStr == null ||
-        adminEmail == null ||
-        openTime == null ||
-        closeTime == null) {
-
-        return ResponseEntity
-                .badRequest()
-                .body("Missing details");
-
-    }
-
-    LocalDate date;
-
-    try {
-
-        date =
-                LocalDate.parse(
-                        dateStr
-                );
-
-    }
-
-    catch (Exception e) {
-
-        return ResponseEntity
-                .badRequest()
-                .body(
-                "Invalid date format"
-                );
-
-    }
-
-    // Generate or use provided code
-
-    String finalCode;
-
-    if (providedCode != null &&
-        !providedCode.trim().isEmpty()) {
-
-        finalCode =
-                providedCode;
-
-    }
-
-    else {
-
-        finalCode =
-                generateUniqueCode();
-
-    }
-
-    // Create restaurant
-
-    Restaurant restaurant =
-            new Restaurant();
-
-    restaurant.setName(name);
-
-    restaurant.setDate(date);
-
-    restaurant.setAdminEmail(adminEmail);
-
-    restaurant.setCode(finalCode);
-
-    // NEW — save timing
-
-    restaurant.setOpenTime(openTime);
-
-    restaurant.setCloseTime(closeTime);
-
-    restaurantRepository.save(
-            restaurant
-    );
-
-    return ResponseEntity.ok(
-            Map.of(
-                    "message",
-                    "Restaurant added successfully",
-
-                    "code",
-                    finalCode
-            )
-    );
+        // ✅ FIX: Only required fields
+        if (name == null || dateStr == null || adminEmail == null) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("error", "Missing details"));
         }
+
+        LocalDate date;
+        try {
+            date = LocalDate.parse(dateStr);
+        } catch (Exception e) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(Map.of("error", "Invalid date format"));
+        }
+
+        // Generate or use provided code
+        String finalCode;
+        if (providedCode != null && !providedCode.trim().isEmpty()) {
+            finalCode = providedCode;
+        } else {
+            finalCode = generateUniqueCode();
+        }
+
+        // Create restaurant
+        Restaurant restaurant = new Restaurant();
+        restaurant.setName(name);
+        restaurant.setDate(date);
+        restaurant.setAdminEmail(adminEmail);
+        restaurant.setCode(finalCode);
+
+        // ✅ FIX: timing optional
+        if (openTime != null && closeTime != null) {
+            restaurant.setOpenTime(openTime);
+            restaurant.setCloseTime(closeTime);
+        }
+
+        restaurantRepository.save(restaurant);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "message", "Restaurant added successfully",
+                        "code", finalCode
+                )
+        );
+    }
 
 @PostMapping("/update-timing")
 public ResponseEntity<?> updateTiming(

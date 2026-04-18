@@ -181,7 +181,7 @@ function toggleMyOrders(){
     ).style.display =
     "none";
 
-    /* IMPORTANT — hide status panel */
+    /* IMPORTANT ï¿½ hide status panel */
 
     document.getElementById(
       "order-status-panel"
@@ -657,7 +657,7 @@ async function showUPIScanner(){
   document.getElementById("upi-scanner").classList.remove("hidden");
 
   try{
-    const res = await fetch(`https://tastego-production.up.railway.app/api/scanner/base64/${encodeURIComponent(restaurant)}`);
+    const res = await fetch(`http://localhost:8081/api/scanner/base64/${encodeURIComponent(restaurant)}`);
 
     if(!res.ok){
       alert("Scanner not found");

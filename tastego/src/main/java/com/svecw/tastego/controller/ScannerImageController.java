@@ -1,9 +1,7 @@
 package com.svecw.tastego.controller;
 
 import com.svecw.tastego.model.ScannerImage;
-import com.svecw.tastego.model.Restaurant;
 import com.svecw.tastego.repository.ScannerImageRepository;
-import com.svecw.tastego.repository.RestaurantRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -11,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
+import java.nio.file.*;
 import java.util.*;
 
 @RestController
@@ -22,76 +20,147 @@ public class ScannerImageController {
     @Autowired
     private ScannerImageRepository scannerImageRepository;
 
-    @Autowired
-    private RestaurantRepository restaurantRepository;
-
+    // =========================
+    // UPLOAD SCANNER
+    // =========================
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadUPIScreenshot(
-            @RequestParam("restaurantName") String restaurantName,
-            @RequestParam("upiScreenshot") MultipartFile upiScreenshotFile) {
+    public ResponseEntity<?> uploadScanner(
+            @RequestParam("upiScreenshot") MultipartFile file,
+            @RequestParam("restaurantName") String restaurantName) {
 
         try {
-            Optional<Restaurant> restaurant = restaurantRepository.findByName(restaurantName);
-
-            if (restaurant.isEmpty()) {
-                return ResponseEntity.badRequest().body("Restaurant not found");
+            // ✅ Validation
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "File is empty"));
             }
 
+            if (restaurantName == null || restaurantName.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Restaurant name required"));
+            }
+
+            // ✅ Allow only images
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Only image files allowed"));
+            }
+
+            // ✅ Create upload folder
+            Path uploadPath = Paths.get(
+                    System.getProperty("user.dir"),
+                    "uploads",
+                    "scanners"
+            );
+
+            Files.createDirectories(uploadPath);
+
+            // ✅ Generate unique filename
+            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            Path destinationPath = uploadPath.resolve(fileName);
+
+            // ✅ Save file to disk
+            file.transferTo(destinationPath.toFile());
+
+            // ✅ Save metadata to DB (FIXED HERE)
             ScannerImage scannerImage = new ScannerImage();
-            scannerImage.setName(restaurantName);
-            scannerImage.setScanner("UPI");
-            scannerImage.setImage(upiScreenshotFile.getBytes());
-            scannerImage.setResultText(null);
+            scannerImage.setRestaurantName(restaurantName);  // ✅ FIX
+            scannerImage.setScannerType("UPI");              // ✅ FIX
+            scannerImage.setFileName(fileName);              // ✅ FIX
 
             scannerImageRepository.save(scannerImage);
 
-            return ResponseEntity.ok("UPI screenshot uploaded successfully for " + restaurantName);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Upload successful",
+                    "fileName", fileName
+            ));
 
-        } catch (IOException e) {
-            return ResponseEntity.status(500).body("Upload failed: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 
+    // =========================
+    // GET IMAGES BY RESTAURANT
+    // =========================
     @GetMapping("/{restaurantName}")
     public ResponseEntity<List<ScannerImage>> getScreenshotsByRestaurant(
             @PathVariable String restaurantName) {
 
-        List<ScannerImage> images = scannerImageRepository.findByName(restaurantName);
+        List<ScannerImage> images =
+                scannerImageRepository.findByRestaurantName(restaurantName); // ✅ FIX
+
         return ResponseEntity.ok(images);
     }
 
-    @GetMapping("/view/{restaurantName}")
-    public ResponseEntity<byte[]> viewScannerImage(
-            @PathVariable String restaurantName) {
+    // =========================
+    // VIEW IMAGE
+    // =========================
+    @GetMapping("/view/{fileName}")
+    public ResponseEntity<?> viewScannerImage(
+            @PathVariable String fileName) {
 
-        List<ScannerImage> images = scannerImageRepository.findByName(restaurantName);
+        try {
+            Path filePath = Paths.get(
+                    System.getProperty("user.dir"),
+                    "uploads",
+                    "scanners",
+                    fileName
+            );
 
-        if (images.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            if (!Files.exists(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            byte[] imageBytes = Files.readAllBytes(filePath);
+            String contentType = Files.probeContentType(filePath);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(
+                            contentType != null ? contentType : "image/png"
+                    ))
+                    .body(imageBytes);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("Error loading image");
         }
-
-        ScannerImage scannerImage = images.get(0);
-        return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_PNG)
-                .body(scannerImage.getImage());
     }
 
-    @GetMapping("/base64/{restaurantName}")
-    public ResponseEntity<Map<String, String>> getScannerImageBase64(
-            @PathVariable String restaurantName) {
+    // =========================
+    // BASE64 IMAGE
+    // =========================
+    @GetMapping("/base64/{fileName}")
+    public ResponseEntity<?> getScannerImageBase64(
+            @PathVariable String fileName) {
 
-        List<ScannerImage> images = scannerImageRepository.findByName(restaurantName);
+        try {
+            Path filePath = Paths.get(
+                    System.getProperty("user.dir"),
+                    "uploads",
+                    "scanners",
+                    fileName
+            );
 
-        if (images.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            if (!Files.exists(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            byte[] imageBytes = Files.readAllBytes(filePath);
+
+            String base64 = Base64.getEncoder()
+                    .encodeToString(imageBytes);
+
+            return ResponseEntity.ok(
+                    Map.of("base64", base64)
+            );
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body("Error converting image");
         }
-
-        ScannerImage scannerImage = images.get(0);
-        String base64 = Base64.getEncoder().encodeToString(scannerImage.getImage());
-
-        Map<String, String> response = new HashMap<>();
-        response.put("base64", base64);
-
-        return ResponseEntity.ok(response);
     }
 }

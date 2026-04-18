@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scanner Upload Test</title>
+</head>
+<body>
+    <h1>Test Scanner Upload</h1>
+    <form id="uploadForm">
+        <input type="text" id="restaurantName" placeholder="Restaurant Name" value="Test Restaurant"><br><br>
+        <input type="file" id="upiScreenshot" accept="image/*"><br><br>
+        <button type="submit">Upload Scanner</button>
+    </form>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const restaurantName = document.getElementById('restaurantName').value;
+            const fileInput = document.getElementById('upiScreenshot');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('restaurantName', restaurantName);
+            formData.append('upiScreenshot', file);
+
+            try {
+                const response = await fetch('http://localhost:8081/api/scanner/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                console.log('Response:', result);
+
+                if (response.ok) {
+                    alert('Upload successful: ' + result.message);
+                } else {
+                    alert('Upload failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Network error: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

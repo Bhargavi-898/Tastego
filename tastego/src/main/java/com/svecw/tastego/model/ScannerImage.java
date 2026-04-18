@@ -9,15 +9,13 @@ public class ScannerImage {
     @Id
     private String id;
 
-    private String name;
-
-    private String scanner;
-
-    private byte[] image;
-
-    private String resultText;
+    private String restaurantName;   // ✅ renamed clearly
+    private String scannerType;      // ✅ better naming
+    private String fileName;         // ✅ stored file name only
 
     public ScannerImage() {}
+
+    // ===== Getters & Setters =====
 
     public String getId() {
         return id;
@@ -27,36 +25,27 @@ public class ScannerImage {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
+    public String getRestaurantName() {
+        return restaurantName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setRestaurantName(String restaurantName) {
+        this.restaurantName = restaurantName;
     }
 
-    public String getScanner() {
-        return scanner;
+    public String getScannerType() {
+        return scannerType;
     }
 
-    public void setScanner(String scanner) {
-        this.scanner = scanner;
+    public void setScannerType(String scannerType) {
+        this.scannerType = scannerType;
     }
 
-    public byte[] getImage() {
-        return image;
+    public String getFileName() {
+        return fileName;
     }
 
-    public void setImage(byte[] image) {
-        this.image = image;
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
-
-    public String getResultText() {
-        return resultText;
-    }
-
-    public void setResultText(String resultText) {
-        this.resultText = resultText;
-    }
-
 }

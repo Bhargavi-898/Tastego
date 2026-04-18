@@ -8,5 +8,7 @@ import java.util.List;
 
 @Repository
 public interface ScannerImageRepository extends MongoRepository<ScannerImage, String> {
-    List<ScannerImage> findByName(String restaurantName);
+
+    // ✅ match new field name
+    List<ScannerImage> findByRestaurantName(String restaurantName);
 }

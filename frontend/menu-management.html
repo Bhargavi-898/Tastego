@@ -402,8 +402,15 @@ async function loadPreviousMenu(name){
       formData.append('restaurantName', restaurantName);
       formData.append('upiScreenshot', input.files[0]);
       try {
-        const res = await fetch('https://tastego-production.up.railway.app/api/scanner/upload', { method: 'POST', body: formData });
-        if (res.ok) { alert('UPI screenshot uploaded'); input.value = ''; document.getElementById('upiScannerPreview').innerHTML = ''; } else { const error = await res.text(); alert('Upload failed: ' + error); }
+        const res = await fetch('http://localhost:8081/api/scanner/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (res.ok) {
+          alert('UPI screenshot uploaded');
+          input.value = '';
+          document.getElementById('upiScannerPreview').innerHTML = '';
+        } else {
+          alert('Upload failed: ' + (data.error || 'Unknown error'));
+        }
       } catch (err) { alert('Network error: ' + err.message); }
     }
 
@@ -418,7 +425,7 @@ async function loadPreviousMenu(name){
       `;
       if (order.paymentScreenshot) {
         const img = document.createElement('img');
-        img.src = `https://tastego-production.up.railway.app/uploads/scanners/${order.paymentScreenshot}`;
+        img.src = `http://localhost:8081/uploads/scanners/${order.paymentScreenshot}`;
         img.alt = 'Payment receipt';
         img.style.maxWidth = '200px';
         img.style.display = 'block';
