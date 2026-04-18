@@ -131,8 +131,12 @@ public class StudentController {
             order.setMenuItemNames(items);
 
             order.setQuantity(quantity);
-            order.setPaymentScreenshot(scannerFileName);
-            order.setStatus("PENDING");
+String imageUrl =
+        "https://tastego-production.up.railway.app/api/scanner/view/"
+        + scannerFileName;
+
+order.setPaymentScreenshot(imageUrl);     
+       order.setStatus("PENDING");
             order.setTokenNumber(null);
             order.setDate(LocalDate.now());
             order.setOrderTime(LocalDateTime.now());

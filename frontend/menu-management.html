@@ -448,8 +448,13 @@ function createOrderCard(order) {
     ${order.tokenNumber ? `<p><strong>Token:</strong> ${order.tokenNumber}</p>` : ''}
   `;
 
-  // ❌ PAYMENT RECEIPT REMOVED COMPLETELY
-
+// ✅ PAYMENT RECEIPT DISPLAY FIX
+if (order.paymentScreenshot) {
+  const img = document.createElement('img');
+img.src = BASE_URL + "/api/scanner/view/" + order.paymentScreenshot;  img.style.maxWidth = "200px";
+  img.style.marginTop = "10px";
+  card.appendChild(img);
+}
   // Buttons (UNCHANGED)
   if (order.status && order.status.toLowerCase() === 'pending') {
     const actionBar = document.createElement('div');
