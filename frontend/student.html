@@ -61,14 +61,16 @@ img { width:100%; max-width:300px; display:block; margin:10px auto; }
 .token-display { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#333; }
 #dynamic-token { text-align:center; font-weight:bold; font-size:1.2rem; margin-top:20px; color:#28a745; }
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 <div id="sidePanel">
-  <button class="side-btn" onclick="showMenu()">?? Menu</button>
-  <button class="side-btn" onclick="toggleMyOrders()">?? My Orders</button>
-  <button class="side-btn" onclick="showOrderStatus()">?? Order Status</button>
+  <button class="side-btn" onclick="showMenu()">🍽️ Menu</button>
+  <button class="side-btn" onclick="toggleMyOrders()">📦 My Orders</button>
+
+  <button class="side-btn" onclick="showOrderStatus()">📊 Order Status</button>
   
-  <button class="side-btn" onclick="logout()">?? Logout</button>
+  <button class="side-btn" onclick="logout()">🚪 Logout</button>
 </div>
 <div
 id="timingBlock"
@@ -605,7 +607,7 @@ function renderMenu(){
   const menuDiv = document.getElementById("menu");
   menuDiv.innerHTML = menu.map((item, index) => `
     <div class="menu-item">
-      <span>${item.name} - ?${item.price}</span>
+      <span>${item.name} - ${item.price}</span>
       <button class="add-button" onclick="addToCart(${index})">Add</button>
     </div>
   `).join('');
@@ -642,13 +644,13 @@ function renderCart(){
 
   cartDiv.innerHTML = cart.map((item, index) => `
     <div class="cart-item">
-      <span>${item.name} - ?${item.price}</span>
+      <span>${item.name} - ${item.price}</span>
       <button class="remove-button" onclick="removeFromCart(${index})">Remove</button>
     </div>
   `).join('');
 
   const total = cart.reduce((sum, item) => sum + item.price, 0);
-  totalDiv.textContent = `Total: ?${total.toFixed(2)}`;
+  totalDiv.textContent = `Total: ${total.toFixed(2)}`;
 }
 
 // Show UPI Scanner
