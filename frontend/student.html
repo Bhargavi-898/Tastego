@@ -653,28 +653,59 @@ function renderCart(){
 
 // Show UPI Scanner
 async function showUPIScanner(){
+
   document.getElementById("cart-container").classList.add("hidden");
   document.getElementById("upi-scanner").classList.remove("hidden");
 
   try{
-    const res = await fetch(`http://localhost:8081/api/scanner/base64/${encodeURIComponent(restaurant)}`);
+
+    // ✅ STEP 1: Get scanner metadata using restaurant name
+    const metaRes = await fetch(
+      `http://localhost:8081/api/scanner/${encodeURIComponent(restaurant)}`
+    );
+
+    if(!metaRes.ok){
+      alert("No scanner uploaded for this restaurant");
+      return;
+    }
+
+    const images = await metaRes.json();
+
+    if(!images || images.length === 0){
+      alert("Scanner not available");
+      return;
+    }
+
+    // ✅ STEP 2: Get fileName
+    const fileName = images[0].fileName;
+
+    if(!fileName){
+      alert("Invalid scanner data");
+      return;
+    }
+
+    // ✅ STEP 3: Fetch base64 using fileName
+    const res = await fetch(
+      `http://localhost:8081/api/scanner/base64/${encodeURIComponent(fileName)}`
+    );
 
     if(!res.ok){
-      alert("Scanner not found");
-      console.error("Scanner error:", res.status);
+      alert("Error loading scanner image");
       return;
     }
 
     const data = await res.json();
 
-    if(data && data.base64){
-      document.getElementById("scannerImageDynamic").src = `data:image/png;base64,${data.base64}`;
+    if(data.base64){
+      document.getElementById("scannerImageDynamic").src =
+        `data:image/png;base64,${data.base64}`;
     } else {
-      alert("Invalid scanner response");
-      console.error("Invalid data:", data);
+      alert("Invalid image data");
     }
+
   } catch(err){
-    console.error("Error loading scanner:", err);
+    console.error("Scanner error:", err);
+    alert("Failed to load scanner");
   }
 }
 

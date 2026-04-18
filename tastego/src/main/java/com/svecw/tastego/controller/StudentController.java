@@ -7,17 +7,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import java.util.Optional;
+
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-import java.util.Arrays;
+import java.util.*;
+
 @RestController
 @RequestMapping("/api/student")
-@CrossOrigin("*")
+@CrossOrigin(origins = "*")   // ✅ FIXED
 public class StudentController {
 
     @Autowired
@@ -29,80 +28,141 @@ public class StudentController {
     @Autowired
     private OrderRepository orderRepo;
 
+    // =========================
+    // GET MENU
+    // =========================
     @GetMapping("/menu/{restaurantName}")
     public ResponseEntity<?> getMenu(@PathVariable String restaurantName) {
-        RestaurantMenu menu = restaurantMenuRepository.findByRestaurantName(restaurantName);
+
+        RestaurantMenu menu =
+                restaurantMenuRepository.findByRestaurantName(restaurantName);
 
         if (menu == null || menu.getMenuItems() == null) {
-            return ResponseEntity.badRequest().body("Menu not found");
+            return ResponseEntity.badRequest()
+                    .body("Menu not found");
         }
 
         return ResponseEntity.ok(menu.getMenuItems());
     }
 
+    // =========================
+    // UPLOAD PAYMENT SCREENSHOT
+    // =========================
     @PostMapping("/upload-scanner")
-    public ResponseEntity<String> uploadScanner(@RequestParam MultipartFile file) throws IOException {
-        String uploadDir = System.getProperty("user.dir") + File.separator + "uploads" +
-                File.separator + "scanners" + File.separator;
+    public ResponseEntity<?> uploadScanner(
+            @RequestParam("file") MultipartFile file) {
 
-        File dir = new File(uploadDir);
+        try {
 
-        if (!dir.exists()) {
-            dir.mkdirs();
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body("File is empty");
+            }
+
+            String uploadDir =
+                    System.getProperty("user.dir") +
+                    File.separator + "uploads" +
+                    File.separator + "scanners" +
+                    File.separator;
+
+            File dir = new File(uploadDir);
+
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            String fileName =
+                    UUID.randomUUID() + "_" +
+                    Objects.requireNonNull(file.getOriginalFilename());
+
+            File destination =
+                    new File(uploadDir + fileName);
+
+            file.transferTo(destination);
+
+            return ResponseEntity.ok(fileName);
+
+        } catch (IOException e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity.internalServerError()
+                    .body("Upload failed");
         }
-
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        File destination = new File(uploadDir + fileName);
-
-        file.transferTo(destination);
-
-        return ResponseEntity.ok(fileName);
     }
 
+    // =========================
+    // PLACE ORDER
+    // =========================
     @PostMapping("/place-order")
-    public ResponseEntity<String> placeOrder(
+    public ResponseEntity<?> placeOrder(
+
             @RequestParam String studentName,
             @RequestParam String studentEmail,
             @RequestParam String restaurantName,
             @RequestParam String menuItemId,
-@RequestParam String menuItemNames,
+            @RequestParam String menuItemNames,
             @RequestParam int quantity,
             @RequestParam String scannerFileName) {
 
-        Order order = new Order();
+        try {
 
-        order.setStudentName(studentName);
-        order.setStudentEmail(studentEmail);
-        order.setRestaurantName(restaurantName);
-        order.setMenuItemId(menuItemId);
-List<String> items =
-        Arrays.asList(
-                menuItemNames
-                        .replace("[","")
-                        .replace("]","")
-                        .replace("\"","")
-                        .split(",")
-        );
+            Order order = new Order();
 
-order.setMenuItemNames(items);        order.setQuantity(quantity);
-        order.setPaymentScreenshot(scannerFileName);
-        order.setStatus("PENDING");
-        order.setTokenNumber(null);
-        order.setDate(LocalDate.now());
-        order.setOrderTime(LocalDateTime.now());
-        order.setAcknowledged(false);
+            order.setStudentName(studentName);
+            order.setStudentEmail(studentEmail);
+            order.setRestaurantName(restaurantName);
+            order.setMenuItemId(menuItemId);
 
-        orderRepo.save(order);
+            // ✅ SAFE PARSE
+            List<String> items = new ArrayList<>();
 
-        return ResponseEntity.ok(order.getId());
+            if (menuItemNames != null && !menuItemNames.isEmpty()) {
+
+                items = Arrays.asList(
+                        menuItemNames
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace("\"", "")
+                                .split(",")
+                );
+            }
+
+            order.setMenuItemNames(items);
+
+            order.setQuantity(quantity);
+            order.setPaymentScreenshot(scannerFileName);
+            order.setStatus("PENDING");
+            order.setTokenNumber(null);
+            order.setDate(LocalDate.now());
+            order.setOrderTime(LocalDateTime.now());
+            order.setAcknowledged(false);
+
+            orderRepo.save(order);
+
+            return ResponseEntity.ok(order.getId());
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity.internalServerError()
+                    .body("Order failed");
+        }
     }
 
+    // =========================
+    // GET TOKEN STATUS
+    // =========================
     @GetMapping("/token")
     public ResponseEntity<?> getToken(
             @RequestParam String studentEmail,
             @RequestParam String restaurantName) {
 
-        List<Order> orders = orderRepo.findByStudentEmailAndRestaurantName(studentEmail, restaurantName);
+        List<Order> orders =
+                orderRepo.findByStudentEmailAndRestaurantName(
+                        studentEmail, restaurantName
+                );
 
         if (orders == null || orders.isEmpty()) {
             return ResponseEntity.ok("Order not found");
@@ -111,102 +171,104 @@ order.setMenuItemNames(items);        order.setQuantity(quantity);
         Order order = orders.get(orders.size() - 1);
 
         if ("ACCEPTED".equalsIgnoreCase(order.getStatus())) {
-            return ResponseEntity.ok("Order Accepted. Token Number: " + order.getTokenNumber());
+            return ResponseEntity.ok(
+                    "Order Accepted. Token Number: " +
+                    order.getTokenNumber()
+            );
         }
 
         if ("REJECTED".equalsIgnoreCase(order.getStatus())) {
-            return ResponseEntity.ok("Order Rejected by Restaurant");
+            return ResponseEntity.ok(
+                    "Order Rejected by Restaurant"
+            );
         }
 
-        return ResponseEntity.ok("Waiting for restaurant verification");
+        return ResponseEntity.ok(
+                "Waiting for restaurant verification"
+        );
     }
 
+    // =========================
+    // GET TODAY RESTAURANTS
+    // =========================
     @GetMapping("/today-restaurants")
     public ResponseEntity<?> getTodayRestaurants() {
-        List<Restaurant> restaurants = restaurantRepo.findByDate(LocalDate.now());
+
+        List<Restaurant> restaurants =
+                restaurantRepo.findByDate(LocalDate.now());
+
         return ResponseEntity.ok(restaurants);
     }
 
-@GetMapping("/orders")
-public ResponseEntity<?> getStudentOrders(
-        @RequestParam String studentEmail) {
+    // =========================
+    // GET STUDENT ORDERS
+    // =========================
+    @GetMapping("/orders")
+    public ResponseEntity<?> getStudentOrders(
+            @RequestParam String studentEmail) {
 
-    try {
+        try {
 
-        LocalDate today =
-                LocalDate.now();
+            LocalDate today = LocalDate.now();
 
-        // Get today's restaurant
+            List<Restaurant> restaurants =
+                    restaurantRepo.findByDate(today);
 
-        List<Restaurant> restaurants =
-                restaurantRepo.findByDate(today);
+            if (restaurants == null || restaurants.isEmpty()) {
+                return ResponseEntity.ok(List.of());
+            }
 
-        if (restaurants == null ||
-            restaurants.isEmpty()) {
+            String todayRestaurant =
+                    restaurants.get(0).getName();
 
-            return ResponseEntity.ok(
-                    List.of()
-            );
+            LocalDateTime startOfDay =
+                    today.atStartOfDay();
 
+            LocalDateTime endOfDay =
+                    today.atTime(23, 59, 59);
+
+            List<Order> orders =
+                    orderRepo
+                    .findByStudentEmailAndRestaurantNameAndOrderTimeBetween(
+                            studentEmail,
+                            todayRestaurant,
+                            startOfDay,
+                            endOfDay
+                    );
+
+            return ResponseEntity.ok(orders);
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            return ResponseEntity.ok(List.of());
         }
-
-        String todayRestaurant =
-                restaurants.get(0)
-                .getName();
-
-        // Create time range
-
-        LocalDateTime startOfDay =
-                today.atStartOfDay();
-
-        LocalDateTime endOfDay =
-                today.atTime(23, 59, 59);
-
-        // Fetch only today's orders
-
-        List<Order> orders =
-                orderRepo
-                .findByStudentEmailAndRestaurantNameAndOrderTimeBetween(
-                        studentEmail,
-                        todayRestaurant,
-                        startOfDay,
-                        endOfDay
-                );
-
-        return ResponseEntity.ok(
-                orders
-        );
-
     }
 
-    catch (Exception e) {
-
-        e.printStackTrace();
-
-        return ResponseEntity.ok(
-                List.of()
-        );
-
-    }
-
-}
-
+    // =========================
+    // ORDER STATUS (ALT API)
+    // =========================
     @GetMapping("/order/status")
     public ResponseEntity<?> getOrderStatus(
             @RequestParam String studentEmail,
             @RequestParam String restaurantId) {
 
-        List<Order> orders = orderRepo.findByStudentEmailAndRestaurantId(studentEmail, restaurantId);
+        List<Order> orders =
+                orderRepo.findByStudentEmailAndRestaurantId(
+                        studentEmail, restaurantId
+                );
 
         if (orders == null || orders.isEmpty()) {
-            return ResponseEntity.badRequest().body("Order not found");
+            return ResponseEntity.badRequest()
+                    .body("Order not found");
         }
 
         Order order = orders.get(orders.size() - 1);
 
-        if ("ACCEPTED".equals(order.getStatus())) {
+        if ("ACCEPTED".equalsIgnoreCase(order.getStatus())) {
             return ResponseEntity.ok(
-                    java.util.Map.of(
+                    Map.of(
                             "message", "Your order placed",
                             "token", order.getTokenNumber()
                     )
@@ -214,7 +276,7 @@ public ResponseEntity<?> getStudentOrders(
         }
 
         return ResponseEntity.ok(
-                java.util.Map.of(
+                Map.of(
                         "message", "Waiting for restaurant verification"
                 )
         );
