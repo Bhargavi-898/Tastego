@@ -451,7 +451,7 @@ function createOrderCard(order) {
 // ✅ PAYMENT RECEIPT DISPLAY FIX
 if (order.paymentScreenshot) {
   const img = document.createElement('img');
-img.src = BASE_URL + "/api/scanner/view/" + order.paymentScreenshot;  img.style.maxWidth = "200px";
+img.src = order.paymentScreenshot; img.style.maxWidth = "200px";
   img.style.marginTop = "10px";
   card.appendChild(img);
 }
