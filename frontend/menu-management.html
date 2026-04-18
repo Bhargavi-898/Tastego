@@ -67,6 +67,7 @@
       .page-header, .content { margin-left: 0; }
     }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div id="sidePanel">
@@ -109,6 +110,9 @@
         <div class="action-row">
           <button class="btn" onclick="loadPendingOrders()">Pending Orders</button>
           <button class="btn" onclick="loadAcceptedOrders()">Accepted Orders</button>
+         <button class="btn" onclick="downloadAcceptedOrdersPDF()">
+  📄 Download Accepted Orders PDF
+</button>
         </div>
         <div id="orders" class="order-list"><p class="message">Click the buttons above to load orders</p></div>
       </div>
@@ -441,34 +445,12 @@ function createOrderCard(order) {
     <p><strong>Items:</strong> ${order.menuItemNames ? order.menuItemNames.join(', ') : 'N/A'}</p>
     <p><strong>Qty:</strong> ${order.quantity || 'N/A'}</p>
     <p><strong>Status:</strong> ${order.status || 'N/A'}</p>
+    ${order.tokenNumber ? `<p><strong>Token:</strong> ${order.tokenNumber}</p>` : ''}
   `;
 
-  // ✅ FIXED IMAGE HANDLING
-  if (order.paymentScreenshot) {
-    const img = document.createElement('img');
+  // ❌ PAYMENT RECEIPT REMOVED COMPLETELY
 
-    img.src = `${BASE_URL}/api/scanner/view/${encodeURIComponent(order.paymentScreenshot)}`;
-
-    img.alt = 'Payment receipt';
-    img.style.maxWidth = '200px';
-    img.style.display = 'block';
-    img.style.marginTop = '8px';
-
-    // ✅ fallback if image fails
-    img.onerror = () => {
-      img.style.display = 'none';
-
-      const errorText = document.createElement('p');
-      errorText.style.color = 'red';
-      errorText.innerText = '❌ Unable to load payment receipt';
-
-      card.appendChild(errorText);
-    };
-
-    card.appendChild(img);
-  }
-
-  // Buttons (unchanged)
+  // Buttons (UNCHANGED)
   if (order.status && order.status.toLowerCase() === 'pending') {
     const actionBar = document.createElement('div');
     actionBar.style.marginTop = '8px';
@@ -492,6 +474,62 @@ function createOrderCard(order) {
   }
 
   return card;
+}
+async function downloadAcceptedOrdersPDF() {
+  if (!restaurantName) {
+    alert("Please login first");
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `https://tastego-production.up.railway.app/api/admin/orders/accepted?restaurantName=${encodeURIComponent(restaurantName)}`
+    );
+
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      alert("No accepted orders to download");
+      return;
+    }
+
+    // ✅ SAFE JS PDF LOADING (FIX)
+    const jsPDF = window.jspdf && window.jspdf.jsPDF;
+
+    if (!jsPDF) {
+      alert("PDF library not loaded. Please refresh the page.");
+      return;
+    }
+
+    const doc = new jsPDF();
+
+    let y = 10;
+
+    doc.setFontSize(16);
+    doc.text(`${restaurantName} - Accepted Orders`, 10, y);
+    y += 10;
+
+    doc.setFontSize(10);
+
+    data.forEach((order, index) => {
+      const items = order.menuItemNames ? order.menuItemNames.join(", ") : "N/A";
+
+      doc.text(`#${index + 1} Student: ${order.studentEmail || "N/A"}`, 10, y); y += 6;
+      doc.text(`Items: ${items}`, 10, y); y += 6;
+      doc.text(`Qty: ${order.quantity || "N/A"} | Token: ${order.tokenNumber || "N/A"}`, 10, y); y += 6;
+      doc.text(`Status: ${order.status || "N/A"}`, 10, y); y += 8;
+
+      if (y > 270) {
+        doc.addPage();
+        y = 10;
+      }
+    });
+
+    doc.save("accepted_orders.pdf");
+
+  } catch (err) {
+    alert("PDF download failed: " + err.message);
+  }
 }
     function renderOrders(data) {
       const orders = document.getElementById('orders');
