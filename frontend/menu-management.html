@@ -114,6 +114,8 @@
   </div>
 
   <script>
+    const BASE_URL = "https://tastego-production.up.railway.app";
+// const BASE_URL = "http://localhost:8081"; // use this only for local testing
     let restaurantName = localStorage.getItem('restaurantName') || '';
     let restaurantId = localStorage.getItem('restaurantId') || '';
 
@@ -395,64 +397,100 @@ async function loadPreviousMenu(name){
     }
 
     async function saveUPIScanner() {
-      if (!restaurantName) { alert('Please login first'); return; }
-      const input = document.getElementById('upiScannerInput');
-      if (!input.files || !input.files[0]) { alert('Select an image first'); return; }
-      const formData = new FormData();
-      formData.append('restaurantName', restaurantName);
-      formData.append('upiScreenshot', input.files[0]);
-      try {
-        const res = await fetch('http://localhost:8081/api/scanner/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (res.ok) {
-          alert('UPI screenshot uploaded');
-          input.value = '';
-          document.getElementById('upiScannerPreview').innerHTML = '';
-        } else {
-          alert('Upload failed: ' + (data.error || 'Unknown error'));
-        }
-      } catch (err) { alert('Network error: ' + err.message); }
-    }
+  if (!restaurantName) { alert('Please login first'); return; }
 
-    function createOrderCard(order) {
-      const card = document.createElement('div');
-      card.className = 'order-card';
-      card.innerHTML = `
-        <p><strong>Student:</strong> ${order.studentEmail || 'N/A'}</p>
-        <p><strong>Items:</strong> ${order.menuItemNames ? order.menuItemNames.join(', ') : 'N/A'}</p>
-        <p><strong>Qty:</strong> ${order.quantity || 'N/A'}</p>
-        <p><strong>Status:</strong> ${order.status || 'N/A'}</p>
-      `;
-      if (order.paymentScreenshot) {
-        const img = document.createElement('img');
-        img.src = `http://localhost:8081/uploads/scanners/${order.paymentScreenshot}`;
-        img.alt = 'Payment receipt';
-        img.style.maxWidth = '200px';
-        img.style.display = 'block';
-        img.style.marginTop = '8px';
-        card.appendChild(img);
-      }
-      if (order.status && order.status.toLowerCase() === 'pending') {
-        const actionBar = document.createElement('div');
-        actionBar.style.marginTop = '8px';
-        const accept = document.createElement('button');
-        accept.className = 'btn';
-        accept.style.background = '#16a34a';
-        accept.textContent = 'Accept';
-        accept.onclick = () => acceptOrder(order.id);
-        const reject = document.createElement('button');
-        reject.className = 'btn';
-        reject.style.background = '#dc2626';
-        reject.style.marginLeft = '8px';
-        reject.textContent = 'Reject';
-        reject.onclick = () => rejectOrder(order.id);
-        actionBar.appendChild(accept);
-        actionBar.appendChild(reject);
-        card.appendChild(actionBar);
-      }
-      return card;
-    }
+  const input = document.getElementById('upiScannerInput');
 
+  if (!input.files || !input.files[0]) {
+    alert('Select an image first');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('restaurantName', restaurantName);
+  formData.append('upiScreenshot', input.files[0]);
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/scanner/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert('UPI screenshot uploaded');
+      input.value = '';
+      document.getElementById('upiScannerPreview').innerHTML = '';
+    } else {
+      alert('Upload failed: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Network error: ' + err.message);
+  }
+}
+
+function createOrderCard(order) {
+  const card = document.createElement('div');
+  card.className = 'order-card';
+
+  card.innerHTML = `
+    <p><strong>Student:</strong> ${order.studentEmail || 'N/A'}</p>
+    <p><strong>Items:</strong> ${order.menuItemNames ? order.menuItemNames.join(', ') : 'N/A'}</p>
+    <p><strong>Qty:</strong> ${order.quantity || 'N/A'}</p>
+    <p><strong>Status:</strong> ${order.status || 'N/A'}</p>
+  `;
+
+  // ✅ FIXED IMAGE HANDLING
+  if (order.paymentScreenshot) {
+    const img = document.createElement('img');
+
+    img.src = `${BASE_URL}/api/scanner/view/${encodeURIComponent(order.paymentScreenshot)}`;
+
+    img.alt = 'Payment receipt';
+    img.style.maxWidth = '200px';
+    img.style.display = 'block';
+    img.style.marginTop = '8px';
+
+    // ✅ fallback if image fails
+    img.onerror = () => {
+      img.style.display = 'none';
+
+      const errorText = document.createElement('p');
+      errorText.style.color = 'red';
+      errorText.innerText = '❌ Unable to load payment receipt';
+
+      card.appendChild(errorText);
+    };
+
+    card.appendChild(img);
+  }
+
+  // Buttons (unchanged)
+  if (order.status && order.status.toLowerCase() === 'pending') {
+    const actionBar = document.createElement('div');
+    actionBar.style.marginTop = '8px';
+
+    const accept = document.createElement('button');
+    accept.className = 'btn';
+    accept.style.background = '#16a34a';
+    accept.textContent = 'Accept';
+    accept.onclick = () => acceptOrder(order.id);
+
+    const reject = document.createElement('button');
+    reject.className = 'btn';
+    reject.style.background = '#dc2626';
+    reject.style.marginLeft = '8px';
+    reject.textContent = 'Reject';
+    reject.onclick = () => rejectOrder(order.id);
+
+    actionBar.appendChild(accept);
+    actionBar.appendChild(reject);
+    card.appendChild(actionBar);
+  }
+
+  return card;
+}
     function renderOrders(data) {
       const orders = document.getElementById('orders');
       orders.innerHTML = '';
