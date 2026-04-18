@@ -194,121 +194,57 @@ Save Timing
 
 const API = "https://tastego-production.up.railway.app/api/admin";
 let generatedCode = "";
+
 /* Show sections */
+function hideAllSections() {
+    document.getElementById("admin-container").style.display = "none";
+    document.getElementById("accepted-orders-section").style.display = "none";
+    document.getElementById("restaurantList").style.display = "none";
+    document.getElementById("timing-section").style.display = "none";
+}
 
 function showTimingSection(){
-
-    document.getElementById(
-    "admin-container"
-    ).style.display = "none";
-
-    document.getElementById(
-    "accepted-orders-section"
-    ).style.display = "none";
-
-    document.getElementById(
-    "restaurantList"
-    ).style.display = "none";
-
-    document.getElementById(
-    "timing-section"
-    ).style.display = "block";
-
+    hideAllSections();
+    document.getElementById("timing-section").style.display = "block";
 }
 
 function showAcceptedOrders() {
-
-    document.getElementById(
-    "admin-container"
-    ).style.display = "none";
-
-    document.getElementById(
-    "accepted-orders-section"
-    ).style.display = "block";
-
-    document.getElementById(
-    "restaurantList"
-    ).style.display = "none";
-
-    document.getElementById(
-    "timing-section"
-    ).style.display = "none";
-
+    hideAllSections();
+    document.getElementById("accepted-orders-section").style.display = "block";
     loadAcceptedStudents();
-
 }
+
 function showAddRestaurant(){
-
-    document.getElementById(
-    "admin-container"
-    ).style.display = "block";
-
-    document.getElementById(
-    "accepted-orders-section"
-    ).style.display = "none";
-
-    document.getElementById(
-    "restaurantList"
-    ).style.display = "none";
-
-    document.getElementById(
-    "timing-section"
-    ).style.display = "none";
-
+    hideAllSections();
+    document.getElementById("admin-container").style.display = "block";
 }
+
 function showUpcomingRestaurants() {
-
-    document.getElementById(
-    "admin-container"
-    ).style.display = "none";
-
-    document.getElementById(
-    "accepted-orders-section"
-    ).style.display = "none";
-
-    document.getElementById(
-    "restaurantList"
-    ).style.display = "block";
-
-    document.getElementById(
-    "timing-section"
-    ).style.display = "none";
-
+    hideAllSections();
+    document.getElementById("restaurantList").style.display = "block";
     loadRestaurants();
-
-}
-
-/* Toggle upcoming restaurants */
-
-function removed_toggleRestaurants() {
-    const list = document.getElementById("restaurantList");
-    if (list.style.display === "none") {
-        list.style.display = "block";
-        loadRestaurants();
-    } else {
-        list.style.display = "none";
-    }
 }
 
 function logout(){
-  
-  window.location.href = "login.html";
+    localStorage.removeItem("adminEmail");
+    window.location.href = "login.html";
 }
+
 /* Add restaurant */
-
 function addRestaurant() {
-
-    const name =
-    document.getElementById("restaurantName").value;
-
-    const date =
-    document.getElementById("restaurantDate").value;
-
-    const email =
-    localStorage.getItem("adminEmail");
+    const name = document.getElementById("restaurantName").value;
+    const date = document.getElementById("restaurantDate").value;
+    const email = localStorage.getItem("adminEmail");
+    const openTime = document.getElementById("openTime").value;
+    const closeTime = document.getElementById("closeTime").value;
 
     if (!name || !date) {
-        alert("Fill all fields");
+        alert("Fill restaurant name and date");
+        return;
+    }
+
+    if (!openTime || !closeTime) {
+        alert("Please set order timing first in the timing section");
         return;
     }
 
@@ -318,309 +254,194 @@ function addRestaurant() {
     }
 
     fetch(API + "/add-restaurant", {
-
         method: "POST",
-
         headers: {
             "Content-Type": "application/json"
         },
-
         body: JSON.stringify({
-
             name: name,
             date: date,
             adminEmail: email,
-            code: generatedCode
-
+            code: generatedCode,
+            openTime: openTime,
+            closeTime: closeTime
         })
-
     })
-    .then(res => res.json())
+    .then(res => {
+        if (!res.ok) throw new Error("Failed to add restaurant - check response");
+        return res.json();
+    })
     .then(data => {
-
-        alert("Restaurant Added Successfully");
-
+        alert("Restaurant Added Successfully!");
         generatedCode = "";
-
         document.getElementById("codeDisplay").innerText = "";
-
         document.getElementById("restaurantName").value = "";
-
         document.getElementById("restaurantDate").value = "";
-
+        loadRestaurants();
     })
     .catch(err => {
-
-        console.error(err);
-
-        alert("Error adding restaurant");
-
+        console.error("Full error:", err);
+        alert("Error adding restaurant: " + err.message);
     });
-
 }
 async function saveTiming(){
+    const openTime = document.getElementById("openTime").value;
+    const closeTime = document.getElementById("closeTime").value;
 
-  const openTime =
-  document.getElementById(
-  "openTime"
-  ).value;
-
-  const closeTime =
-  document.getElementById(
-  "closeTime"
-  ).value;
-
-  if(!openTime || !closeTime){
-
-    alert(
-    "Please select both times"
-    );
-
-    return;
-
-  }
-
-  try{
-
-    const res =
-    await fetch(
-
-    API + "/update-timing",
-
-    {
-
-      method:"POST",
-
-      headers:{
-        "Content-Type":
-        "application/json"
-      },
-
-      body: JSON.stringify({
-
-        openTime,
-        closeTime
-
-      })
-
+    if (!openTime || !closeTime) {
+        alert("Please select both times");
+        return;
     }
 
-    );
+    try {
+        const res = await fetch(API + "/update-timing", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                openTime: openTime,
+                closeTime: closeTime
+            })
+        });
 
-    const msg =
-    await res.text();
-
-    document.getElementById(
-    "timingStatus"
-    ).innerText =
-    msg;
-
-  }
-
-  catch(err){
-
-    alert(
-    "Error updating timing"
-    );
-
-  }
-
+        if (!res.ok) throw new Error("Failed to update timing");
+        
+        const msg = await res.text();
+        
+        // Save to localStorage for persistence
+        localStorage.setItem("restaurantOpenTime", openTime);
+        localStorage.setItem("restaurantCloseTime", closeTime);
+        
+        document.getElementById("timingStatus").innerText = msg || "Timing saved successfully!";
+    }
+    catch(err) {
+        console.error(err);
+        alert("Error updating timing: " + err.message);
+    }
 }
 
 async function loadAcceptedStudents() {
+    try {
+        const res = await fetch("https://tastego-production.up.railway.app/api/admin/orders/accepted-all");
+        
+        if (!res.ok) throw new Error("Failed to load orders");
+        
+        const data = await res.json();
+        const container = document.getElementById("accepted-orders");
 
-  try{
+        container.innerHTML = "";
 
-    const res =
-    await fetch(
-    "https://tastego-production.up.railway.app/api/admin/orders/accepted-all"
-    );
+        if (!data || data.length === 0) {
+            container.innerHTML = "<p>No accepted orders</p>";
+            return;
+        }
 
-    const data =
-    await res.json();
-
-    const container =
-    document.getElementById(
-    "accepted-orders"
-    );
-
-    container.innerHTML =
-    "";
-
-    if(
-      !data ||
-      data.length === 0
-    ){
-
-      container.innerHTML =
-      "No accepted orders";
-
-      return;
-
+        data.forEach(order => {
+            const div = document.createElement("div");
+            div.className = "order-card";
+            div.innerHTML = `
+                <p><b>Email:</b> ${order.studentEmail}</p>
+                <p><b>Restaurant:</b> ${order.restaurantName}</p>
+                <p><b>Token Number:</b> ${order.tokenNumber}</p>
+                <p><b>Date:</b> ${order.date}</p>
+            `;
+            container.appendChild(div);
+        });
     }
-
-    data.forEach(order => {
-
-      const div =
-      document.createElement(
-      "div"
-      );
-
-      div.style.border =
-      "1px solid #ccc";
-
-      div.style.padding =
-      "10px";
-
-      div.style.marginBottom =
-      "10px";
-
-      div.innerHTML = `
-
-
-
-<p>
-<b>Email:</b>
-${order.studentEmail}
-</p>
-
-<p>
-<b>Restaurant:</b>
-${order.restaurantName}
-</p>
-
-<p>
-<b>Token Number:</b>
-${order.tokenNumber}
-</p>
-
-<p>
-<b>Date:</b>
-${order.date}
-</p>
-
-`;
-
-      container.appendChild(
-      div
-      );
-
-    });
-
-  }
-
-  catch(err){
-
-    console.error(err);
-
-  }
-
-}
-const openTime =
-document.getElementById(
-"openTime"
-).value;
-
-const closeTime =
-document.getElementById(
-"closeTime"
-).value;
-
-formData.append(
-"openTime",
-openTime
-);
-
-formData.append(
-"closeTime",
-closeTime
-);
-function openOrdersDashboard(){
-window.open("admin-orders.html","_blank");
+    catch(err) {
+        console.error(err);
+        document.getElementById("accepted-orders").innerHTML = "Error loading orders: " + err.message;
+    }
 }
 /* Generate code */
-
 async function generateCode(){
+    try {
+        const email = localStorage.getItem("adminEmail");
 
-  try{
+        const res = await fetch(API + "/generate-code", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: email
+            })
+        });
 
-    const email =
-    localStorage.getItem("adminEmail");
+        if (!res.ok) throw new Error("Failed to generate code");
+        
+        const data = await res.json();
+        generatedCode = data.code || data.generatedCode || data.newCode;
 
-    const res =
-    await fetch(API + "/generate-code", {
+        if (!generatedCode) {
+            alert("Failed to generate code");
+            return;
+        }
 
-      method:"POST",
-
-      headers:{
-        "Content-Type":"application/json"
-      },
-
-      body: JSON.stringify({
-        email: email
-      })
-
-    });
-
-    const data =
-    await res.json();
-
-    generatedCode =
-      data.code ||
-      data.generatedCode ||
-      data.newCode;
-
-    document.getElementById(
-      "codeDisplay"
-    ).innerText =
-      "Generated Code: " + generatedCode;
-
-  }
-
-  catch(error){
-
-    console.error(error);
-
-  }
-
+        document.getElementById("codeDisplay").innerText = "Generated Code: " + generatedCode;
+    }
+    catch(error) {
+        console.error(error);
+        alert("Error generating code: " + error.message);
+    }
 }
-
-
 
 /* Load restaurants */
-
 async function loadRestaurants(){
+    try {
+        const res = await fetch(API + "/restaurants/upcoming");
+        
+        if (!res.ok) throw new Error("Failed to load restaurants");
+        
+        const restaurants = await res.json();
+        const container = document.getElementById("restaurantContainer");
 
-const res=await fetch(API+"/restaurants/upcoming");
+        container.innerHTML = "";
 
-const restaurants=await res.json();
+        if (!restaurants || restaurants.length === 0) {
+            container.innerHTML = "<p>No upcoming restaurants</p>";
+            return;
+        }
 
-const container=document.getElementById("restaurantContainer");
+        restaurants.forEach(r => {
+            const card = document.createElement("div");
+            card.className = "restaurant-card";
+            card.innerHTML = `
+                <b>${r.name}</b><br>
+                Date: ${r.date}<br>
+                Code: ${r.code || "Not Generated"}
+            `;
+            container.appendChild(card);
+        });
+    }
+    catch(error) {
+        console.error(error);
+        document.getElementById("restaurantContainer").innerHTML = "Error loading restaurants: " + error.message;
+    }
+}
 
-container.innerHTML="";
+/* Initialize on page load */
+document.addEventListener("DOMContentLoaded", function() {
+    const adminEmail = localStorage.getItem("adminEmail");
+    if (!adminEmail) {
+        alert("Please login first");
+        window.location.href = "login.html";
+        return;
+    }
 
-restaurants.forEach(r=>{
-
-const card=document.createElement("div");
-
-card.className="restaurant-card";
-
-card.innerHTML=`
-
-<b>${r.name}</b><br>
-Date : ${r.date}<br>
-Code : ${r.code || "Not Generated"}
-
-`;
-
-container.appendChild(card);
-
+    // Load saved timing values if they exist
+    const savedOpenTime = localStorage.getItem("restaurantOpenTime");
+    const savedCloseTime = localStorage.getItem("restaurantCloseTime");
+    
+    if (savedOpenTime) {
+        document.getElementById("openTime").value = savedOpenTime;
+    }
+    if (savedCloseTime) {
+        document.getElementById("closeTime").value = savedCloseTime;
+    }
 });
 
-}
-fetch(
-"https://tastego-production.up.railway.app/api/admin/cleanup-old-orders"
-);
 </script>
 
 </body>
