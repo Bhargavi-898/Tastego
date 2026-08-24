@@ -1,5 +1,4 @@
-package com.svecw.tastego.scheduler;
-
+package com.svecw.tastego.controller;
 import com.svecw.tastego.repository.OrderRepository;
 import com.svecw.tastego.repository.RestaurantRepository;
 
